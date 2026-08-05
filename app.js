@@ -95,6 +95,7 @@ const LATEST_SYNCED_KEY = "eventos-escala-latest-synced";
 const TEAM_BOX = "CAIXA DA EQUIPE";
 const ATRASO_RATE = 200;
 const SCHEDULE_SPREADSHEET_ID = "11ayJbQFmFPzLegFZHL8kPKCvudpPo60O4NyR3i7aofA";
+const SCHEDULE_VACATION_SHEET_TITLE = "FERIAS 2026";
 const SCHEDULE_SHEET_SOURCES = [
   ["SEGUNDA 2026", "Segunda-feira"],
   ["TERCA 2026", "Terca-feira"],
@@ -222,6 +223,7 @@ let latestSyncedRecord = readLatestSyncedCache();
 let orderedScheduleDates = [];
 let scheduleDaysByDate = new Map();
 let scheduleHighlightsByDate = new Map();
+let scheduleVacationsByDate = new Map();
 
 function normalizeText(value) {
   return String(value || "")
@@ -1287,14 +1289,73 @@ async function fetchScheduleHighlights() {
   return highlights;
 }
 
+async function fetchVacationSheetRows() {
+  const url = new URL(`https://docs.google.com/spreadsheets/d/${SCHEDULE_SPREADSHEET_ID}/gviz/tq`);
+  url.searchParams.set("tqx", "out:csv");
+  url.searchParams.set("sheet", SCHEDULE_VACATION_SHEET_TITLE);
+  url.searchParams.set("range", "A3:F80");
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    mode: "cors",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const csvText = await response.text();
+  return parseCsvRows(csvText).filter((row) => {
+    const month = String(row[0] || "").trim();
+    const start = String(row[2] || "").trim();
+    const end = String(row[3] || "").trim();
+    const label = String(row[4] || "").trim();
+    return Boolean(month && start && end && label);
+  });
+}
+
+function buildVacationLookup(rows) {
+  const lookup = new Map();
+
+  rows.forEach((row) => {
+    const start = normalizeSheetDate(row[2]);
+    const end = normalizeSheetDate(row[3]);
+    const label = String(row[4] || "").trim();
+
+    if (!start || !end || !label) {
+      return;
+    }
+
+    const startDate = new Date(`${start}T12:00:00`);
+    const endDate = new Date(`${end}T12:00:00`);
+
+    for (let cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
+      lookup.set(getLocalDateString(cursor), label);
+    }
+  });
+
+  return lookup;
+}
+
+function extractVacationSiglas(label) {
+  return String(label || "")
+    .split("(")[0]
+    .match(/\b(?:[A-Z]{2}|L2)\b/g)?.map((value) => value.trim().toUpperCase()) || [];
+}
+
 async function loadScheduleData() {
   const days = [];
-  const rowsBySheet = await Promise.all(
-    SCHEDULE_SHEET_SOURCES.map(async ([sheetTitle, weekdayLabel]) => ({
-      weekdayLabel,
-      rows: await fetchScheduleSheetRows(sheetTitle),
-    })),
-  );
+  const [vacationRows, rowsBySheet] = await Promise.all([
+    fetchVacationSheetRows(),
+    Promise.all(
+      SCHEDULE_SHEET_SOURCES.map(async ([sheetTitle, weekdayLabel]) => ({
+        weekdayLabel,
+        rows: await fetchScheduleSheetRows(sheetTitle),
+      })),
+    ),
+  ]);
+  const vacationsByDate = buildVacationLookup(vacationRows);
 
   rowsBySheet.forEach(({ weekdayLabel, rows }) => {
     rows.forEach((row) => {
@@ -1316,6 +1377,7 @@ async function loadScheduleData() {
         date: dateKey,
         weekdayLabel,
         siglas,
+        vacationLabel: vacationsByDate.get(dateKey) || null,
       });
     });
   });
@@ -1324,6 +1386,7 @@ async function loadScheduleData() {
   orderedScheduleDates = days.map((item) => item.date);
   scheduleDaysByDate = new Map(days.map((item) => [item.date, item]));
   scheduleHighlightsByDate = await fetchScheduleHighlights();
+  scheduleVacationsByDate = vacationsByDate;
 
   if (rangeLabel && orderedScheduleDates.length) {
     rangeLabel.textContent = `${formatShortDate(orderedScheduleDates[0])} - ${formatShortDate(
@@ -1345,6 +1408,16 @@ function isHighlightedToken(token, highlights) {
   }
 
   return normalizedToken.split("/").some((part) => highlights.has(part));
+}
+
+function isVacationToken(token, vacationSiglas) {
+  if (!vacationSiglas || vacationSiglas.size === 0) {
+    return false;
+  }
+
+  return normalizeToken(token)
+    .split(/[/-]/)
+    .some((part) => vacationSiglas.has(part));
 }
 
 function renderScheduleByDate(dateKey) {
@@ -1376,14 +1449,21 @@ function renderScheduleByDate(dateKey) {
   outOfRangeNotice?.classList.add("hidden");
 
   const highlights = scheduleHighlightsByDate.get(day.date) || new Set();
+  const vacationSiglas = new Set(extractVacationSiglas(day.vacationLabel || scheduleVacationsByDate.get(day.date) || ""));
 
   day.siglas.forEach((token, index) => {
     const item = document.createElement("div");
     item.className = "sigla-item";
     const highlighted = isHighlightedToken(token, highlights);
+    const isVacation = isVacationToken(token, vacationSiglas);
+    const tokenClass = isVacation
+      ? "sigla-token sigla-button sigla-token--vacation"
+      : highlighted
+        ? "sigla-token sigla-button sigla-token--checked sigla-token--highlight"
+        : "sigla-token sigla-button";
 
     item.innerHTML = `
-      <div class="sigla-token sigla-button ${highlighted ? "sigla-token--checked sigla-token--highlight" : ""}">${token}</div>
+      <div class="${tokenClass}">${token}</div>
       <span class="sigla-index">${index + 1}</span>
     `;
     scheduleSiglasGrid.appendChild(item);
