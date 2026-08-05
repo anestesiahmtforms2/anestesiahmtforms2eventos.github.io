@@ -27,7 +27,8 @@
         <img class="hero-logo auth-logo" src="assets/hero-icon.png" alt="Gestão Operacional" />
         <h1>Eventos de Escala</h1>
         <p class="auth-copy">
-          Digite a senha de 4 dígitos para abrir o aplicativo e registrar os eventos com segurança.
+          Digite a senha de 4 dígitos para abrir o aplicativo. Após o login, este dispositivo fica
+          liberado por 90 dias.
         </p>
         <form id="authForm" class="auth-form" novalidate>
           <label class="field field-accent-a auth-field">
@@ -53,8 +54,56 @@
           <img class="hero-logo" src="assets/hero-icon.png" alt="Gestão Operacional" />
           <h1>Eventos de Escala</h1>
           <p class="hero-copy">
-            Registro rápido, visualização mensal e sincronização com a planilha em um fluxo mais claro e profissional.
+            Registro rápido, consulta de escala por data, edição do último registro sincronizado e
+            resumo mensal em um fluxo mais claro e profissional.
           </p>
+        </section>
+
+        <section class="schedule-card">
+          <section class="search-banner">
+            <div class="card-header">
+              <div>
+                <p class="card-title">Buscar qualquer dia</p>
+              </div>
+              <p id="rangeLabel" class="range-label"></p>
+            </div>
+
+            <div id="outOfRangeNotice" class="notice hidden">
+              A data escolhida não está disponível na escala carregada.
+            </div>
+
+            <div class="controls-grid">
+              <label class="date-field" for="scheduleDateInput">
+                <span>Data</span>
+                <input id="scheduleDateInput" type="date" />
+              </label>
+
+              <div class="quick-actions">
+                <button id="prevScheduleButton" class="soft-button" type="button">Anterior</button>
+                <button id="todayScheduleButton" class="primary-button" type="button">Hoje</button>
+                <button id="nextScheduleButton" class="soft-button" type="button">Próximo</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="schedule-top">
+            <div>
+              <p id="scheduleHeading" class="eyebrow"></p>
+              <h2 id="formattedScheduleDate" class="date-title"></h2>
+            </div>
+            <span id="todayBadge" class="today-badge hidden">Hoje</span>
+          </div>
+
+          <div class="badge-row">
+            <span id="weekdayBadge" class="capsule capsule-green"></span>
+            <span class="capsule capsule-blue">Escala do dia</span>
+          </div>
+
+          <div id="scheduleEmptyState" class="empty-state hidden">
+            Sem escala cadastrada para esta data.
+          </div>
+
+          <div id="scheduleSiglasGrid" class="siglas-grid"></div>
         </section>
 
         <section class="install-card" id="installCard">
@@ -160,7 +209,7 @@
             <div>
               <p class="queue-title">Último registro sincronizado</p>
               <p class="queue-copy">
-                Confirmação visual do último conteúdo encontrado diretamente na planilha.
+                Toque duas vezes no cartão para editar o registro mais recente encontrado na planilha.
               </p>
             </div>
           </div>
@@ -184,7 +233,8 @@
             <div>
               <p class="queue-title">Anotações do Dia</p>
               <p class="queue-copy">
-                A área sempre abre pronta para uma nova anotação e envia o conteúdo para a aba `ANOTACOES`.
+                A área sempre abre pronta para uma nova anotação e envia o conteúdo para a aba
+                `ANOTACOES`.
               </p>
             </div>
           </div>
@@ -280,6 +330,76 @@
         </section>
       </div>
     </main>
+
+    <section id="editRecordModal" class="edit-modal hidden" aria-hidden="true">
+      <div id="editRecordBackdrop" class="edit-modal__backdrop"></div>
+      <div class="edit-modal__panel" role="dialog" aria-modal="true" aria-labelledby="editRecordTitle">
+        <div class="edit-modal__header">
+          <div>
+            <p class="queue-title">Editar registro</p>
+            <h2 id="editRecordTitle">Último registro sincronizado</h2>
+          </div>
+          <button type="button" id="closeEditRecordButton" class="secondary-button edit-modal__close">
+            Fechar
+          </button>
+        </div>
+
+        <form id="editRecordForm" class="edit-form" novalidate>
+          <input id="editSourceRow" type="hidden" />
+
+          <div class="field-grid">
+            <label class="field field-accent-a">
+              <span>Data do Evento</span>
+              <input id="editData" type="date" required />
+            </label>
+
+            <label class="field field-accent-b">
+              <span>Tipo de Evento</span>
+              <select id="editEvento" required></select>
+            </label>
+
+            <label class="field field-accent-a">
+              <span>Descrição do evento</span>
+              <input id="editEventoDescricao" type="text" maxlength="120" />
+            </label>
+
+            <label class="field field-accent-b">
+              <span>Múltiplo do atraso</span>
+              <select id="editAtrasoTempo"></select>
+            </label>
+
+            <label class="field field-accent-a">
+              <span>Membro Ausente/Atrasado</span>
+              <select id="editAusente" required></select>
+            </label>
+
+            <label class="field field-accent-b">
+              <span>Substituto</span>
+              <select id="editPresente"></select>
+            </label>
+
+            <label class="field field-accent-a">
+              <span>Turno</span>
+              <select id="editTurno"></select>
+            </label>
+
+            <label class="field field-accent-b">
+              <span>Pagador</span>
+              <input id="editDevedor" type="text" maxlength="120" required />
+            </label>
+          </div>
+
+          <label class="field field-accent-a field-wide">
+            <span>Credor</span>
+            <input id="editCredor" type="text" maxlength="120" />
+          </label>
+
+          <div class="actions">
+            <button type="submit" id="saveEditRecordButton">Salvar alterações</button>
+          </div>
+        </form>
+      </div>
+    </section>
 
     <div class="sr-only" aria-live="polite">
       <span class="status-dot" id="connectionDot"></span>
