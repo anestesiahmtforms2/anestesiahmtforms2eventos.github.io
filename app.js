@@ -87,12 +87,23 @@ const PRESENTE_OPTIONS = [
 const TURNO_OPTIONS = ["Manha", "Tarde", "Integral"];
 const TEMPO_ATRASO_OPTIONS = ["1", "2", "3", "4", "5", "6"];
 const APP_PASSWORD = "8145";
-const AUTH_SESSION_KEY = "eventos-escala-auth-ok";
+const AUTH_STORAGE_KEY = "eventos-escala-auth-state";
+const AUTH_DURATION_MS = 90 * 24 * 60 * 60 * 1000;
 const QUEUE_KEY = "eventos-escala-queue";
 const HISTORY_KEY = "eventos-escala-history";
 const LATEST_SYNCED_KEY = "eventos-escala-latest-synced";
 const TEAM_BOX = "CAIXA DA EQUIPE";
 const ATRASO_RATE = 200;
+const SCHEDULE_SPREADSHEET_ID = "11ayJbQFmFPzLegFZHL8kPKCvudpPo60O4NyR3i7aofA";
+const SCHEDULE_SHEET_SOURCES = [
+  ["SEGUNDA 2026", "Segunda-feira"],
+  ["TERCA 2026", "Terca-feira"],
+  ["QUARTA 2026", "Quarta-feira"],
+  ["QUINTA 2026", "Quinta-feira"],
+  ["SEXTA 2026", "Sexta-feira"],
+  ["SABADO 2026", "Sabado"],
+  ["DOMINGO 2026", "Domingo"],
+];
 const DEFAULT_CONFIG = {
   endpointUrl: "",
   requestTimeoutMs: 15000,
@@ -123,6 +134,18 @@ const authCard = document.getElementById("authCard");
 const appContent = document.getElementById("appContent");
 const authForm = document.getElementById("authForm");
 const passwordInput = document.getElementById("passwordInput");
+const scheduleDateInput = document.getElementById("scheduleDateInput");
+const prevScheduleButton = document.getElementById("prevScheduleButton");
+const todayScheduleButton = document.getElementById("todayScheduleButton");
+const nextScheduleButton = document.getElementById("nextScheduleButton");
+const rangeLabel = document.getElementById("rangeLabel");
+const outOfRangeNotice = document.getElementById("outOfRangeNotice");
+const scheduleHeading = document.getElementById("scheduleHeading");
+const formattedScheduleDate = document.getElementById("formattedScheduleDate");
+const todayBadge = document.getElementById("todayBadge");
+const weekdayBadge = document.getElementById("weekdayBadge");
+const scheduleEmptyState = document.getElementById("scheduleEmptyState");
+const scheduleSiglasGrid = document.getElementById("scheduleSiglasGrid");
 const dataInput = document.getElementById("data");
 const eventoSelect = document.getElementById("evento");
 const eventoOutroField = document.getElementById("eventoOutroField");
@@ -160,6 +183,21 @@ const summaryMonthSelect = document.getElementById("summaryMonthSelect");
 const summaryMonthInfo = document.getElementById("summaryMonthInfo");
 const monthlySummaryList = document.getElementById("monthlySummaryList");
 const summaryShareButton = document.getElementById("summaryShareButton");
+const editRecordModal = document.getElementById("editRecordModal");
+const editRecordBackdrop = document.getElementById("editRecordBackdrop");
+const closeEditRecordButton = document.getElementById("closeEditRecordButton");
+const editRecordForm = document.getElementById("editRecordForm");
+const editSourceRow = document.getElementById("editSourceRow");
+const editDataInput = document.getElementById("editData");
+const editEventoSelect = document.getElementById("editEvento");
+const editEventoDescricaoInput = document.getElementById("editEventoDescricao");
+const editAtrasoTempoSelect = document.getElementById("editAtrasoTempo");
+const editAusenteSelect = document.getElementById("editAusente");
+const editPresenteSelect = document.getElementById("editPresente");
+const editTurnoSelect = document.getElementById("editTurno");
+const editDevedorInput = document.getElementById("editDevedor");
+const editCredorInput = document.getElementById("editCredor");
+const saveEditRecordButton = document.getElementById("saveEditRecordButton");
 const installCard = document.getElementById("installCard");
 const installButton = document.getElementById("installButton");
 const installHelpText = document.getElementById("installHelpText");
@@ -180,6 +218,10 @@ let annotationsOpen = false;
 let notesRemindersOpen = false;
 let summaryOpen = false;
 let lastReviewNoticeKey = "";
+let latestSyncedRecord = readLatestSyncedCache();
+let orderedScheduleDates = [];
+let scheduleDaysByDate = new Map();
+let scheduleHighlightsByDate = new Map();
 
 function normalizeText(value) {
   return String(value || "")
@@ -187,6 +229,26 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase();
+}
+
+function normalizeToken(value) {
+  return normalizeText(value).toUpperCase();
+}
+
+function readStoredAuth() {
+  try {
+    return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAuth(payload) {
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function clearStoredAuth() {
+  localStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
 function getManagedFields() {
@@ -365,31 +427,14 @@ function getRuleForEvent(evento) {
 }
 
 function getSettlementState() {
-  const evento = eventoSelect.value;
-  const rule = getRuleForEvent(evento);
-  const ausente = ausenteSelect.value;
-  const presente = presenteSelect.value;
-  const turno = turnoSelect.value;
-  const atrasoTempo = Number(atrasoTempoSelect.value || 0);
-
-  const pagador =
-    rule.pagadorMode === "absent" ? ausente || "" : rule.pagadorMode === "team" ? TEAM_BOX : devedorSelect.value || "";
-
-  const credor =
-    rule.credorMode === "team"
-      ? TEAM_BOX
-      : rule.credorMode === "substitute"
-        ? presente || ""
-        : "";
-
-  const valorPagar = rule.amountMode === "atraso" ? (atrasoTempo ? atrasoTempo * ATRASO_RATE : "") : getValorPorTurno(turno);
-
-  return {
-    rule,
-    pagador,
-    credor,
-    valorPagar,
-  };
+  return computeSettlementFromValues({
+    evento: eventoSelect.value,
+    ausente: ausenteSelect.value,
+    presente: presenteSelect.value,
+    turno: turnoSelect.value,
+    atrasoTempo: atrasoTempoSelect.value,
+    manualPagador: devedorSelect.value,
+  });
 }
 
 function formatLatestSyncedText(record) {
@@ -405,6 +450,7 @@ function formatLatestSyncedText(record) {
 }
 
 function renderLatestSynced(record = readLatestSyncedCache()) {
+  latestSyncedRecord = record || null;
   latestSyncedCard.innerHTML = "";
 
   const card = document.createElement("article");
@@ -416,9 +462,19 @@ function renderLatestSynced(record = readLatestSyncedCache()) {
     return;
   }
 
+  if (record.sourceRow) {
+    card.dataset.sourceRow = String(record.sourceRow);
+    card.classList.add("history-item--editable");
+  }
+
+  const historyLine = record.historicoAlteracoes
+    ? `<p class="history-edit-line">${record.historicoAlteracoes}</p>`
+    : "";
+
   card.innerHTML = `
     <strong>Data do Evento: ${record.data || "-"} | Tipo de Evento: ${record.evento || "-"}</strong>
     <p>${formatLatestSyncedText(record)}</p>
+    ${historyLine}
   `;
   latestSyncedCard.appendChild(card);
 }
@@ -1091,6 +1147,423 @@ function getLocalDateString(date = new Date()) {
   return localDate.toISOString().slice(0, 10);
 }
 
+function formatShortDate(dateKey) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(`${dateKey}T12:00:00`));
+}
+
+function formatLongDate(dateKey) {
+  const value = new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${dateKey}T12:00:00`));
+
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function normalizeSheetDate(value) {
+  const match = String(value || "").trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) {
+    return null;
+  }
+
+  const [, day, month, year] = match;
+  return `${year}-${month}-${day}`;
+}
+
+function parseCsvRows(csvText) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let insideQuotes = false;
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const char = csvText[index];
+    const nextChar = csvText[index + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !insideQuotes) {
+      row.push(cell.trim());
+      cell = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !insideQuotes) {
+      if (char === "\r" && nextChar === "\n") {
+        index += 1;
+      }
+
+      row.push(cell.trim());
+      if (row.some((value) => value !== "")) {
+        rows.push(row);
+      }
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    cell += char;
+  }
+
+  if (cell.length || row.length) {
+    row.push(cell.trim());
+    if (row.some((value) => value !== "")) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+async function fetchScheduleSheetRows(sheetTitle) {
+  const url = new URL(`https://docs.google.com/spreadsheets/d/${SCHEDULE_SPREADSHEET_ID}/gviz/tq`);
+  url.searchParams.set("tqx", "out:csv");
+  url.searchParams.set("sheet", sheetTitle);
+  url.searchParams.set("range", "A3:R400");
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    mode: "cors",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Falha ao carregar a aba ${sheetTitle}.`);
+  }
+
+  const csvText = await response.text();
+  return parseCsvRows(csvText).filter((row) => row.some((cell) => String(cell || "").trim()));
+}
+
+async function fetchScheduleHighlights() {
+  const url = new URL(`https://docs.google.com/spreadsheets/d/${SCHEDULE_SPREADSHEET_ID}/gviz/tq`);
+  url.searchParams.set("tqx", "out:csv");
+  url.searchParams.set("sheet", "DESTAQUES APP");
+  url.searchParams.set("range", "A2:F800");
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    mode: "cors",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return new Map();
+  }
+
+  const rows = parseCsvRows(await response.text());
+  const highlights = new Map();
+
+  rows.forEach((row) => {
+    const dateKey = String(row[0] || "").trim();
+    const sigla = normalizeToken(row[1] || "");
+    const isMarked = normalizeText(row[2]) !== "false";
+
+    if (!dateKey || !sigla || !isMarked) {
+      return;
+    }
+
+    if (!highlights.has(dateKey)) {
+      highlights.set(dateKey, new Set());
+    }
+
+    highlights.get(dateKey).add(sigla);
+  });
+
+  return highlights;
+}
+
+async function loadScheduleData() {
+  const days = [];
+  const rowsBySheet = await Promise.all(
+    SCHEDULE_SHEET_SOURCES.map(async ([sheetTitle, weekdayLabel]) => ({
+      weekdayLabel,
+      rows: await fetchScheduleSheetRows(sheetTitle),
+    })),
+  );
+
+  rowsBySheet.forEach(({ weekdayLabel, rows }) => {
+    rows.forEach((row) => {
+      const dateKey = normalizeSheetDate(row[0]);
+      if (!dateKey) {
+        return;
+      }
+
+      const siglas = row
+        .slice(1)
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+
+      if (!siglas.length) {
+        return;
+      }
+
+      days.push({
+        date: dateKey,
+        weekdayLabel,
+        siglas,
+      });
+    });
+  });
+
+  days.sort((left, right) => left.date.localeCompare(right.date));
+  orderedScheduleDates = days.map((item) => item.date);
+  scheduleDaysByDate = new Map(days.map((item) => [item.date, item]));
+  scheduleHighlightsByDate = await fetchScheduleHighlights();
+
+  if (rangeLabel && orderedScheduleDates.length) {
+    rangeLabel.textContent = `${formatShortDate(orderedScheduleDates[0])} a ${formatShortDate(
+      orderedScheduleDates[orderedScheduleDates.length - 1],
+    )}`;
+  }
+
+  if (scheduleDateInput && !scheduleDateInput.value) {
+    scheduleDateInput.value = getLocalDateString();
+  }
+
+  renderScheduleByDate(scheduleDateInput?.value || getLocalDateString());
+}
+
+function isHighlightedToken(token, highlights) {
+  const normalizedToken = normalizeToken(token);
+  if (highlights.has(normalizedToken)) {
+    return true;
+  }
+
+  return normalizedToken.split("/").some((part) => highlights.has(part));
+}
+
+function renderScheduleByDate(dateKey) {
+  if (!scheduleSiglasGrid || !formattedScheduleDate || !scheduleHeading || !weekdayBadge || !todayBadge) {
+    return;
+  }
+
+  const day = scheduleDaysByDate.get(dateKey);
+  const isToday = dateKey === getLocalDateString();
+
+  scheduleDateInput.value = dateKey;
+  scheduleSiglasGrid.innerHTML = "";
+  todayBadge.classList.toggle("hidden", !isToday);
+
+  if (!day) {
+    scheduleHeading.textContent = orderedScheduleDates.length ? "Data sem escala nesta planilha" : "Escala indisponivel";
+    formattedScheduleDate.textContent = dateKey ? formatLongDate(dateKey) : "-";
+    weekdayBadge.textContent = "-";
+    scheduleEmptyState?.classList.remove("hidden");
+    outOfRangeNotice?.classList.toggle("hidden", !orderedScheduleDates.length || orderedScheduleDates.includes(dateKey));
+    return;
+  }
+
+  scheduleHeading.textContent = "Consulta rapida da escala";
+  formattedScheduleDate.textContent = formatLongDate(day.date);
+  weekdayBadge.textContent = day.weekdayLabel;
+  scheduleEmptyState?.classList.add("hidden");
+  outOfRangeNotice?.classList.add("hidden");
+
+  const highlights = scheduleHighlightsByDate.get(day.date) || new Set();
+
+  day.siglas.forEach((token, index) => {
+    const item = document.createElement("div");
+    item.className = "sigla-item";
+    const highlighted = isHighlightedToken(token, highlights);
+
+    item.innerHTML = `
+      <div class="sigla-token ${highlighted ? "sigla-token--highlight" : ""}">${token}</div>
+      <span class="sigla-index">${index + 1}</span>
+    `;
+    scheduleSiglasGrid.appendChild(item);
+  });
+}
+
+function clampScheduleDate(dateKey) {
+  if (!orderedScheduleDates.length) {
+    return dateKey;
+  }
+
+  if (dateKey < orderedScheduleDates[0]) {
+    return orderedScheduleDates[0];
+  }
+
+  if (dateKey > orderedScheduleDates[orderedScheduleDates.length - 1]) {
+    return orderedScheduleDates[orderedScheduleDates.length - 1];
+  }
+
+  return dateKey;
+}
+
+function shiftScheduleDate(delta) {
+  const current = scheduleDateInput?.value || getLocalDateString();
+  const date = new Date(`${current}T12:00:00`);
+  date.setDate(date.getDate() + delta);
+  renderScheduleByDate(clampScheduleDate(getLocalDateString(date)));
+}
+
+function computeSettlementFromValues({ evento, ausente, presente, turno, atrasoTempo, manualPagador }) {
+  const rule = getRuleForEvent(evento);
+  const pagador =
+    rule.pagadorMode === "absent" ? ausente || "" : rule.pagadorMode === "team" ? TEAM_BOX : manualPagador || "";
+  const credor = rule.credorMode === "team" ? TEAM_BOX : rule.credorMode === "substitute" ? presente || "" : "";
+  const valorPagar = rule.amountMode === "atraso" ? Number(atrasoTempo || 0) * ATRASO_RATE || "" : getValorPorTurno(turno);
+
+  return { rule, pagador, credor, valorPagar };
+}
+
+function getEditSettlementState() {
+  return computeSettlementFromValues({
+    evento: editEventoSelect.value,
+    ausente: editAusenteSelect.value,
+    presente: editPresenteSelect.value,
+    turno: editTurnoSelect.value,
+    atrasoTempo: editAtrasoTempoSelect.value,
+    manualPagador: editDevedorInput.value,
+  });
+}
+
+function updateEditEventoState() {
+  if (!editRecordForm) {
+    return;
+  }
+
+  const rule = getRuleForEvent(editEventoSelect.value);
+  const isOutro = isOutrosEvent(editEventoSelect.value);
+  const isAtraso = isAtrasoEvent(editEventoSelect.value);
+  const editEventoDescricaoField = editEventoDescricaoInput.closest(".field");
+  const editAtrasoTempoField = editAtrasoTempoSelect.closest(".field");
+  const editPresenteField = editPresenteSelect.closest(".field");
+  const editTurnoField = editTurnoSelect.closest(".field");
+  const editAusenteField = editAusenteSelect.closest(".field");
+
+  editEventoDescricaoField?.classList.toggle("hidden", !isOutro);
+  editEventoDescricaoInput.required = isOutro;
+  if (!isOutro) {
+    editEventoDescricaoInput.value = "";
+  }
+
+  editAtrasoTempoField?.classList.toggle("hidden", !isAtraso);
+  editAtrasoTempoSelect.required = isAtraso;
+  if (!isAtraso) {
+    editAtrasoTempoSelect.value = "";
+  }
+
+  editAusenteSelect.disabled = rule.disableAusente;
+  editAusenteSelect.required = !rule.disableAusente;
+  editAusenteField?.classList.toggle("is-disabled", rule.disableAusente);
+  if (rule.disableAusente) {
+    editAusenteSelect.value = "";
+  }
+
+  editPresenteSelect.disabled = rule.disableSubstituto;
+  editPresenteField?.classList.toggle("is-disabled", rule.disableSubstituto);
+  if (rule.disableSubstituto) {
+    editPresenteSelect.value = "";
+  }
+
+  editTurnoSelect.disabled = rule.disableTurno;
+  editTurnoField?.classList.toggle("is-disabled", rule.disableTurno);
+  if (rule.disableTurno) {
+    editTurnoSelect.value = "";
+  }
+
+  editDevedorInput.readOnly = rule.pagadorMode !== "manual";
+  editCredorInput.readOnly = true;
+
+  const { pagador, credor } = getEditSettlementState();
+  editDevedorInput.value = pagador || "";
+  editCredorInput.value = credor || "";
+}
+
+function openEditModal() {
+  if (!latestSyncedRecord?.sourceRow || !editRecordModal) {
+    showToast("Nao ha registro sincronizado pronto para edicao.");
+    return;
+  }
+
+  fillSelect(editEventoSelect, currentEventoOptions, "Selecione");
+  fillSelect(editAtrasoTempoSelect, TEMPO_ATRASO_OPTIONS, "Selecione");
+  fillSelect(editAusenteSelect, currentAusenteOptions, "Selecione");
+  fillSelect(editPresenteSelect, currentPresenteOptions, "Selecione");
+  fillSelect(editTurnoSelect, TURNO_OPTIONS, "Selecione");
+
+  editSourceRow.value = String(latestSyncedRecord.sourceRow || "");
+  editDataInput.value = latestSyncedRecord.data || "";
+  editEventoSelect.value = latestSyncedRecord.evento || "";
+  editEventoDescricaoInput.value = latestSyncedRecord.eventoDescricao || "";
+  if (latestSyncedRecord.atrasoTempo) {
+    editAtrasoTempoSelect.value = String(latestSyncedRecord.atrasoTempo);
+  }
+  editAusenteSelect.value = latestSyncedRecord.ausente || "";
+  editPresenteSelect.value = latestSyncedRecord.presente || "";
+  editTurnoSelect.value = latestSyncedRecord.turno || "";
+  editDevedorInput.value = latestSyncedRecord.devedor || "";
+  editCredorInput.value = latestSyncedRecord.credor || "";
+
+  updateEditEventoState();
+  editRecordModal.classList.remove("hidden");
+  editRecordModal.setAttribute("aria-hidden", "false");
+}
+
+function closeEditModal() {
+  if (!editRecordModal) {
+    return;
+  }
+
+  editRecordModal.classList.add("hidden");
+  editRecordModal.setAttribute("aria-hidden", "true");
+}
+
+function buildEditPayload() {
+  const { pagador, credor, valorPagar } = getEditSettlementState();
+  const evento = editEventoSelect.value;
+
+  return {
+    kind: "updateRecord",
+    sourceRow: Number(editSourceRow.value || 0),
+    data: editDataInput.value,
+    dataDoEvento: editDataInput.value,
+    evento,
+    tipoDeEvento: evento,
+    eventoDescricao: isOutrosEvent(evento) ? editEventoDescricaoInput.value.trim() : "",
+    descricaoDoEvento: isOutrosEvent(evento) ? editEventoDescricaoInput.value.trim() : "",
+    atrasoTempo: isAtrasoEvent(evento) ? Number(editAtrasoTempoSelect.value || 0) : "",
+    multiploDoAtraso: isAtrasoEvent(evento) ? Number(editAtrasoTempoSelect.value || 0) : "",
+    ausente: editAusenteSelect.value,
+    membroAusenteAtrasado: editAusenteSelect.value,
+    presente: ruleRequiresSubstituto(evento) ? editPresenteSelect.value : "",
+    membroSubstituto: ruleRequiresSubstituto(evento) ? editPresenteSelect.value : "",
+    turno: ruleRequiresTurno(evento) ? editTurnoSelect.value : "",
+    devedor: pagador,
+    pagador,
+    credor,
+    resultadoCredor: credor,
+    valorPagar,
+    valorAPagar: valorPagar ? BRL_FORMATTER.format(valorPagar) : "",
+    atualizadoEm: new Date().toISOString(),
+    origem: "PWA Eventos de escala",
+  };
+}
+
+function ruleRequiresSubstituto(evento) {
+  return !getRuleForEvent(evento).disableSubstituto;
+}
+
+function ruleRequiresTurno(evento) {
+  return !getRuleForEvent(evento).disableTurno;
+}
+
 function setDefaultDate() {
   dataInput.value = getLocalDateString();
 }
@@ -1130,7 +1603,17 @@ function showToast(message) {
 }
 
 function isAuthenticated() {
-  return sessionStorage.getItem(AUTH_SESSION_KEY) === "1";
+  const authState = readStoredAuth();
+  if (!authState?.expiresAt) {
+    return false;
+  }
+
+  if (Number(authState.expiresAt) <= Date.now()) {
+    clearStoredAuth();
+    return false;
+  }
+
+  return true;
 }
 
 function showAppContent() {
@@ -1152,7 +1635,10 @@ function sanitizePasswordInput() {
 }
 
 function unlockApp() {
-  sessionStorage.setItem(AUTH_SESSION_KEY, "1");
+  writeStoredAuth({
+    unlockedAt: Date.now(),
+    expiresAt: Date.now() + AUTH_DURATION_MS,
+  });
   showAppContent();
   if (!appBootstrapped) {
     bootstrapApp();
@@ -1361,6 +1847,33 @@ async function onAnnotationSubmit(event) {
   }
 }
 
+async function onEditRecordSubmit(event) {
+  event.preventDefault();
+
+  if (!editRecordForm?.reportValidity()) {
+    return;
+  }
+
+  const payload = buildEditPayload();
+  if (!payload.sourceRow) {
+    showToast("Nao foi possivel identificar a linha do registro.");
+    return;
+  }
+
+  saveEditRecordButton.disabled = true;
+
+  try {
+    await postPayload(payload);
+    await fetchBootstrapData();
+    closeEditModal();
+    showToast("Registro atualizado com sucesso.");
+  } catch {
+    showToast("Nao foi possivel salvar a edicao agora.");
+  } finally {
+    saveEditRecordButton.disabled = false;
+  }
+}
+
 function addToQueue(payload) {
   const queue = readQueue();
   queue.push(payload);
@@ -1416,6 +1929,7 @@ async function fetchBootstrapData() {
 
   if (data.latestRecord) {
     writeLatestSyncedCache(data.latestRecord);
+    latestSyncedRecord = data.latestRecord;
   }
 
   renderLatestSynced(data.latestRecord || readLatestSyncedCache());
@@ -1565,10 +2079,15 @@ function bootstrapApp() {
   updateAnnotationsToggleState();
   updateNotesRemindersToggleState();
   updateSummaryToggleState();
+  scheduleDateInput.value = getLocalDateString();
   fetchBootstrapData().catch(() => {
     renderLatestSynced();
     renderNotesReminders();
     renderMonthlySummary();
+  });
+  loadScheduleData().catch(() => {
+    renderScheduleByDate(scheduleDateInput.value || getLocalDateString());
+    showToast("Nao foi possivel atualizar a escala agora.");
   });
   updateInstallUI();
 }
@@ -1586,6 +2105,11 @@ function initializeApp() {
 }
 
 eventoSelect.addEventListener("change", updateEventoState);
+editEventoSelect?.addEventListener("change", updateEditEventoState);
+editAtrasoTempoSelect?.addEventListener("change", updateEditEventoState);
+editAusenteSelect?.addEventListener("change", updateEditEventoState);
+editPresenteSelect?.addEventListener("change", updateEditEventoState);
+editTurnoSelect?.addEventListener("change", updateEditEventoState);
 atrasoTempoSelect.addEventListener("change", () => {
   updateSettlementPreview();
   maybeNotifyReviewAlert();
@@ -1614,6 +2138,7 @@ annotationsForm?.addEventListener("input", updateFieldHaloState);
 annotationsForm?.addEventListener("change", updateFieldHaloState);
 form.addEventListener("submit", onSubmit);
 annotationsForm?.addEventListener("submit", onAnnotationSubmit);
+editRecordForm?.addEventListener("submit", onEditRecordSubmit);
 syncButton.addEventListener("click", () => {
   flushQueue().catch(() => showToast("Nao foi possivel reenviar agora."));
 });
@@ -1637,12 +2162,26 @@ summaryShareButton?.addEventListener("click", () => {
 installButton?.addEventListener("click", () => {
   handleInstallClick().catch(() => showToast("Nao foi possivel abrir a instalacao agora."));
 });
+scheduleDateInput?.addEventListener("change", () => {
+  renderScheduleByDate(clampScheduleDate(scheduleDateInput.value || getLocalDateString()));
+});
+prevScheduleButton?.addEventListener("click", () => shiftScheduleDate(-1));
+todayScheduleButton?.addEventListener("click", () => {
+  renderScheduleByDate(clampScheduleDate(getLocalDateString()));
+});
+nextScheduleButton?.addEventListener("click", () => shiftScheduleDate(1));
+latestSyncedCard?.addEventListener("dblclick", () => {
+  openEditModal();
+});
+closeEditRecordButton?.addEventListener("click", closeEditModal);
+editRecordBackdrop?.addEventListener("click", closeEditModal);
 authForm?.addEventListener("submit", handleAuthSubmit);
 passwordInput?.addEventListener("input", sanitizePasswordInput);
 window.addEventListener("online", () => {
   updateConnectionState();
   flushQueue().catch(() => {});
   fetchBootstrapData().catch(() => {});
+  loadScheduleData().catch(() => {});
 });
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", (event) => {
