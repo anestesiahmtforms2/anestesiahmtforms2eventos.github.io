@@ -1326,7 +1326,7 @@ async function loadScheduleData() {
   scheduleHighlightsByDate = await fetchScheduleHighlights();
 
   if (rangeLabel && orderedScheduleDates.length) {
-    rangeLabel.textContent = `${formatShortDate(orderedScheduleDates[0])} a ${formatShortDate(
+    rangeLabel.textContent = `${formatShortDate(orderedScheduleDates[0])} - ${formatShortDate(
       orderedScheduleDates[orderedScheduleDates.length - 1],
     )}`;
   }
@@ -1360,15 +1360,16 @@ function renderScheduleByDate(dateKey) {
   todayBadge.classList.toggle("hidden", !isToday);
 
   if (!day) {
-    scheduleHeading.textContent = orderedScheduleDates.length ? "Data sem escala nesta planilha" : "Escala indisponivel";
+    scheduleHeading.textContent = isToday ? "Data atual" : "Dia selecionado";
     formattedScheduleDate.textContent = dateKey ? formatLongDate(dateKey) : "-";
-    weekdayBadge.textContent = "-";
+    weekdayBadge.textContent = "";
     scheduleEmptyState?.classList.remove("hidden");
+    scheduleSiglasGrid.innerHTML = "";
     outOfRangeNotice?.classList.toggle("hidden", !orderedScheduleDates.length || orderedScheduleDates.includes(dateKey));
     return;
   }
 
-  scheduleHeading.textContent = "Consulta rapida da escala";
+  scheduleHeading.textContent = isToday ? "Data atual" : "Dia selecionado";
   formattedScheduleDate.textContent = formatLongDate(day.date);
   weekdayBadge.textContent = day.weekdayLabel;
   scheduleEmptyState?.classList.add("hidden");
@@ -1382,7 +1383,7 @@ function renderScheduleByDate(dateKey) {
     const highlighted = isHighlightedToken(token, highlights);
 
     item.innerHTML = `
-      <div class="sigla-token ${highlighted ? "sigla-token--highlight" : ""}">${token}</div>
+      <div class="sigla-token sigla-button ${highlighted ? "sigla-token--checked sigla-token--highlight" : ""}">${token}</div>
       <span class="sigla-index">${index + 1}</span>
     `;
     scheduleSiglasGrid.appendChild(item);
