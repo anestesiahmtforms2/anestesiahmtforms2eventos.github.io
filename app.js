@@ -1331,7 +1331,12 @@ function buildVacationLookup(rows) {
     const endDate = new Date(`${end}T12:00:00`);
 
     for (let cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
-      lookup.set(getLocalDateString(cursor), label);
+      const dateKey = getLocalDateString(cursor);
+      if (!lookup.has(dateKey)) {
+        lookup.set(dateKey, []);
+      }
+
+      lookup.get(dateKey).push(label);
     }
   });
 
@@ -1345,8 +1350,9 @@ function extractVacationSiglas(label) {
 }
 
 function getVacationOrderForDate(dateKey) {
-  const label = String(scheduleDaysByDate.get(dateKey)?.vacationLabel || scheduleVacationsByDate.get(dateKey) || "");
-  return extractVacationSiglas(label);
+  const labels = scheduleDaysByDate.get(dateKey)?.vacationLabel || scheduleVacationsByDate.get(dateKey) || [];
+  const labelList = Array.isArray(labels) ? labels : [labels];
+  return extractVacationSiglas(labelList.join(" "));
 }
 
 function getVacationPosition(sigla, vacationOrder, showVacationPositions) {
