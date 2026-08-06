@@ -1344,6 +1344,57 @@ function extractVacationSiglas(label) {
     .match(/\b(?:[A-Z]{2}|L2)\b/g)?.map((value) => value.trim().toUpperCase()) || [];
 }
 
+function getVacationOrderForDate(dateKey) {
+  const label = String(scheduleDaysByDate.get(dateKey)?.vacationLabel || scheduleVacationsByDate.get(dateKey) || "");
+  return extractVacationSiglas(label);
+}
+
+function getVacationPosition(sigla, vacationOrder, showVacationPositions) {
+  if (!showVacationPositions || !Array.isArray(vacationOrder) || vacationOrder.length < 2) {
+    return 0;
+  }
+
+  const index = vacationOrder.indexOf(normalizeToken(sigla));
+  return index === -1 ? 0 : index + 1;
+}
+
+function appendVacationTokenDisplay(token, sigla, vacationOrder, showVacationPositions) {
+  const parts = String(sigla || "").toUpperCase().split(/([/-])/);
+  const isCombinedSigla = parts.some((part) => part === "/" || part === "-");
+
+  parts.forEach((part) => {
+    if (!/^(?:[A-Z]{2}|L2)$/.test(part)) {
+      token.appendChild(document.createTextNode(part));
+      return;
+    }
+
+    const partWrap = document.createElement("span");
+    partWrap.className = "sigla-token__part";
+
+    const vacationPart = document.createElement("span");
+    vacationPart.className = isCombinedSigla ? "sigla-token__vacation-part" : "sigla-token__vacation-label";
+    vacationPart.textContent = part;
+
+    const position = getVacationPosition(part, vacationOrder, showVacationPositions);
+    if (position) {
+      const wrap = document.createElement("span");
+      wrap.className = "sigla-token__vacation-wrap";
+      wrap.appendChild(vacationPart);
+
+      const marker = document.createElement("span");
+      marker.className = "sigla-token__position";
+      marker.textContent = String(position);
+      marker.setAttribute("aria-hidden", "true");
+      wrap.appendChild(marker);
+      partWrap.appendChild(wrap);
+    } else {
+      partWrap.appendChild(vacationPart);
+    }
+
+    token.appendChild(partWrap);
+  });
+}
+
 async function loadScheduleData() {
   const days = [];
   const [vacationRows, rowsBySheet] = await Promise.all([
@@ -1449,7 +1500,9 @@ function renderScheduleByDate(dateKey) {
   outOfRangeNotice?.classList.add("hidden");
 
   const highlights = scheduleHighlightsByDate.get(day.date) || new Set();
-  const vacationSiglas = new Set(extractVacationSiglas(day.vacationLabel || scheduleVacationsByDate.get(day.date) || ""));
+  const vacationOrder = getVacationOrderForDate(day.date);
+  const vacationSiglas = new Set(vacationOrder);
+  const showVacationPositions = vacationSiglas.size > 1;
 
   day.siglas.forEach((token, index) => {
     const item = document.createElement("div");
@@ -1462,10 +1515,22 @@ function renderScheduleByDate(dateKey) {
         ? "sigla-token sigla-button sigla-token--checked sigla-token--highlight"
         : "sigla-token sigla-button";
 
-    item.innerHTML = `
-      <div class="${tokenClass}">${token}</div>
-      <span class="sigla-index">${index + 1}</span>
-    `;
+    const tokenNode = document.createElement("button");
+    tokenNode.type = "button";
+    tokenNode.className = tokenClass;
+
+    if (isVacation) {
+      appendVacationTokenDisplay(tokenNode, token, vacationOrder, showVacationPositions);
+    } else {
+      tokenNode.textContent = token;
+    }
+
+    const counter = document.createElement("span");
+    counter.className = "sigla-index";
+    counter.textContent = String(index + 1);
+
+    item.appendChild(tokenNode);
+    item.appendChild(counter);
     scheduleSiglasGrid.appendChild(item);
   });
 }
