@@ -1416,3 +1416,19 @@ button {
     font-size: 0.5rem;
   }
 }
+
+
+.sigla-token--vacation {
+  color: #17833c !important;
+  background:
+    radial-gradient(circle at center, rgba(255, 252, 219, 1) 0%, rgba(254, 249, 169, 0.98) 34%, rgba(253, 230, 138, 0.98) 62%, rgba(251, 191, 36, 0.92) 100%) !important;
+  border-color: rgba(234, 179, 8, 0.92) !important;
+  border-radius: 999px !important;
+  text-shadow: 0 1px 2px rgba(5, 61, 27, 0.42), 0 0 4px rgba(74, 222, 128, 0.48);
+  box-shadow:
+    0 0 0 2px rgba(254, 243, 199, 0.98),
+    0 0 0 4px rgba(253, 230, 138, 0.34),
+    0 0 13px rgba(252, 211, 77, 0.58),
+    inset 0 0 10px rgba(255, 255, 255, 0.34),
+    0 6px 14px rgba(217, 119, 6, 0.14) !important;
+}
