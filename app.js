@@ -1594,18 +1594,33 @@ function renderScheduleByDate(dateKey) {
   });
 }
 
+function resolveMemberOption(sigla) {
+  const key = normalizeToken(sigla);
+  return currentAusenteOptions.find((option) => {
+    const optionKey = normalizeToken(option);
+    return optionKey === key || optionKey.startsWith(key + " -") || optionKey.startsWith(key + " ");
+  }) || sigla;
+}
+
+function getClickedMemberChoices(token, isVacation) {
+  const rawParts = String(token || "").split(/[\\/|-]/).map((value) => value.trim()).filter(Boolean);
+  const hasDcGroup = rawParts.some((value) => normalizeToken(value) === "dc");
+  const choices = hasDcGroup ? ["AD", "CR", "LH", "LA"] : rawParts;
+  return isVacation || choices.length > 1 ? choices : [choices[0] || token];
+}
+
 function openEventForSigla(token, dateKey, isVacation) {
-  const choices = String(token || "").split(/[\\/|-]/).map((value) => value.trim()).filter(Boolean);
-  let selected = choices[0] || token;
-  if (isVacation || choices.length > 1) {
-    const answer = window.prompt(`Escolha o membro para registrar:\\n${choices.map((value, index) => `${index + 1} - ${value}`).join("\\n")}`, "1");
-    const index = Number(answer) - 1;
-    if (!Number.isInteger(index) || !choices[index]) return;
-    selected = choices[index];
+  const choices = getClickedMemberChoices(token, isVacation);
+  const displayChoices = choices.map(resolveMemberOption);
+  let selectedIndex = 0;
+  if (displayChoices.length > 1) {
+    const answer = window.prompt(`Escolha o membro para registrar:\\n${displayChoices.map((value, index) => `${index + 1} - ${value}`).join("\\n")}`, "1");
+    selectedIndex = Number(answer) - 1;
+    if (!Number.isInteger(selectedIndex) || !displayChoices[selectedIndex]) return;
   }
   eventEntryCard?.classList.remove("hidden");
   dataInput.value = dateKey;
-  if (currentAusenteOptions.includes(selected)) ausenteSelect.value = selected;
+  ausenteSelect.value = displayChoices[selectedIndex] || "";
   eventEntryCard?.scrollIntoView({ behavior: "smooth", block: "start" });
   updateEventoState();
   updateFieldHaloState();
