@@ -200,6 +200,7 @@ const editPresenteSelect = document.getElementById("editPresente");
 const editTurnoSelect = document.getElementById("editTurno");
 const editDevedorInput = document.getElementById("editDevedor");
 const editCredorInput = document.getElementById("editCredor");
+const editObservacoesInput = document.getElementById("editObservacoes");
 const saveEditRecordButton = document.getElementById("saveEditRecordButton");
 const installCard = document.getElementById("installCard");
 const installButton = document.getElementById("installButton");
@@ -1723,7 +1724,8 @@ function updateEditEventoState() {
   editCredorInput.value = credor || "";
 }
 
-function openEditModal() {
+function openEditModal(record = latestSyncedRecord) {
+  latestSyncedRecord = record || latestSyncedRecord;
   if (!latestSyncedRecord?.sourceRow || !editRecordModal) {
     showToast("Nao ha registro sincronizado pronto para edicao.");
     return;
@@ -1747,6 +1749,7 @@ function openEditModal() {
   editTurnoSelect.value = latestSyncedRecord.turno || "";
   editDevedorInput.value = latestSyncedRecord.devedor || "";
   editCredorInput.value = latestSyncedRecord.credor || "";
+  if (editObservacoesInput) editObservacoesInput.value = latestSyncedRecord.observacoes || "";
 
   updateEditEventoState();
   editRecordModal.classList.remove("hidden");
@@ -1788,6 +1791,7 @@ function buildEditPayload() {
     resultadoCredor: credor,
     valorPagar,
     valorAPagar: valorPagar ? BRL_FORMATTER.format(valorPagar) : "",
+    observacoes: editObservacoesInput?.value.trim() || "",
     atualizadoEm: new Date().toISOString(),
     origem: "PWA Eventos de escala",
   };
