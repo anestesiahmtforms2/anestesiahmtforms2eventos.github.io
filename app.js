@@ -224,6 +224,7 @@ let orderedScheduleDates = [];
 let scheduleDaysByDate = new Map();
 let scheduleHighlightsByDate = new Map();
 let scheduleVacationsByDate = new Map();
+let memoryAuthState = null;
 
 function normalizeText(value) {
   return String(value || "")
@@ -239,18 +240,37 @@ function normalizeToken(value) {
 
 function readStoredAuth() {
   try {
-    return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || "null");
+    const rawValue = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!rawValue) {
+      return memoryAuthState;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    memoryAuthState = parsedValue;
+    return parsedValue;
   } catch {
-    return null;
+    return memoryAuthState;
   }
 }
 
 function writeStoredAuth(payload) {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+  memoryAuthState = payload;
+
+  try {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Some mobile browsers or installed PWAs can temporarily block storage writes.
+  }
 }
 
 function clearStoredAuth() {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
+  memoryAuthState = null;
+
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup failures and continue with the in-memory state.
+  }
 }
 
 function getManagedFields() {
@@ -614,7 +634,1085 @@ function getSelectedSummaryRecords() {
 
 function downloadFile(blob, filename) {
   const url = URL.createObjectURL(blob);
-  const link = document.createElemen…8201 tokens truncated…   sourceRow: Number(editSourceRow.value || 0),
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function normalizePdfText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function escapePdfText(value) {
+  return normalizePdfText(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/\r?\n/g, " ");
+}
+
+function wrapPdfText(value, maxLength) {
+  const text = normalizePdfText(value || "-");
+  if (!text) {
+    return ["-"];
+  }
+
+  if (text.length <= maxLength) {
+    return [text];
+  }
+
+  const words = text.split(" ");
+  const lines = [];
+  let current = "";
+
+  words.forEach((word) => {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length > maxLength && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  });
+
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines;
+}
+
+function createStyledSummaryPdfBlob(monthKey, records) {
+  const pageWidth = 595;
+  const pageHeight = 842;
+  const marginX = 32;
+  const topY = 810;
+  const bottomY = 46;
+  const rowPaddingY = 9;
+  const lineHeight = 12;
+  const usableWidth = pageWidth - marginX * 2;
+  const tableTopGap = 18;
+  const columns = [
+    { label: "DEVEDOR", key: "devedor", width: 138, maxLength: 22 },
+    { label: "CREDOR", key: "credor", width: 138, maxLength: 22 },
+    { label: "DATA(S) DO EVENTO", key: "datas", width: 180, maxLength: 34 },
+    { label: "TOTAL DEVIDO", key: "total", width: usableWidth - 138 - 138 - 180, maxLength: 13 },
+  ];
+
+  function addRect(commands, x, y, width, height, fillColor, strokeColor, lineWidth = 1) {
+    if (fillColor) {
+      commands.push(`${fillColor.join(" ")} rg`);
+    }
+    if (strokeColor) {
+      commands.push(`${strokeColor.join(" ")} RG`);
+      commands.push(`${lineWidth} w`);
+    }
+    commands.push(`${x} ${y} ${width} ${height} re ${fillColor && strokeColor ? "B" : fillColor ? "f" : "S"}`);
+  }
+
+  function addText(commands, text, x, y, size, color, fontAlias) {
+    commands.push("BT");
+    commands.push(`/${fontAlias} ${size} Tf`);
+    commands.push(`${color.join(" ")} rg`);
+    commands.push(`1 0 0 1 ${x} ${y} Tm (${escapePdfText(text)}) Tj`);
+    commands.push("ET");
+  }
+
+  function drawPageFrame(commands, pageNumber) {
+    addRect(commands, marginX, 756, usableWidth, 54, [0.05, 0.48, 0.42], null);
+    addText(commands, "EVENTOS DE ESCALA", marginX + 18, 787, 20, [1, 1, 1], "F2");
+    addText(commands, `Resumo mensal de ${normalizePdfText(formatMonthLabel(monthKey))}`, marginX + 18, 768, 11, [0.92, 0.98, 0.97], "F1");
+
+    addRect(commands, marginX, 724, usableWidth, 22, [0.95, 0.97, 0.95], [0.82, 0.86, 0.84], 0.8);
+    addText(commands, `${records.length} relacao(oes) de pagamento`, marginX + 14, 731, 10, [0.08, 0.25, 0.22], "F2");
+    addText(commands, `Pagina ${pageNumber}`, pageWidth - marginX - 52, 731, 10, [0.36, 0.42, 0.48], "F1");
+
+    let cursorX = marginX;
+    addRect(commands, marginX, 690, usableWidth, 24, [0.84, 0.91, 0.88], [0.72, 0.8, 0.77], 0.8);
+    columns.forEach((column, index) => {
+      if (index > 0) {
+        commands.push(`0.72 0.8 0.77 RG`);
+        commands.push(`0.8 w`);
+        commands.push(`${cursorX} 690 m ${cursorX} 714 l S`);
+      }
+      addText(commands, column.label, cursorX + 8, 698, 9, [0.08, 0.25, 0.22], "F2");
+      cursorX += column.width;
+    });
+  }
+
+  const pages = [];
+  let pageRows = [];
+  let currentY = 684;
+
+  records.forEach((record, index) => {
+    const rowCells = columns.map((column) => wrapPdfText(record[column.key], column.maxLength));
+    const maxLines = Math.max(...rowCells.map((lines) => lines.length));
+    const rowHeight = rowPaddingY * 2 + maxLines * lineHeight;
+
+    if (currentY - rowHeight < bottomY) {
+      pages.push(pageRows);
+      pageRows = [];
+      currentY = 684;
+    }
+
+    pageRows.push({
+      index,
+      y: currentY,
+      height: rowHeight,
+      cells: rowCells,
+    });
+    currentY -= rowHeight;
+  });
+
+  if (pageRows.length || !pages.length) {
+    pages.push(pageRows);
+  }
+
+  const objects = [];
+  const catalogId = 1;
+  const pagesId = 2;
+  const fontRegularId = 3;
+  const fontBoldId = 4;
+
+  objects[catalogId] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
+  objects[fontRegularId] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+  objects[fontBoldId] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+
+  const pageObjectIds = [];
+
+  pages.forEach((rows, pageIndex) => {
+    const commands = [];
+    drawPageFrame(commands, pageIndex + 1);
+
+    rows.forEach((row) => {
+      const rowBottom = row.y - row.height;
+      const fillColor = row.index % 2 === 0 ? [0.985, 0.985, 0.98] : [0.955, 0.965, 0.972];
+      addRect(commands, marginX, rowBottom, usableWidth, row.height, fillColor, [0.86, 0.88, 0.9], 0.8);
+
+      let cellX = marginX;
+      columns.forEach((column, columnIndex) => {
+        if (columnIndex > 0) {
+          commands.push(`0.86 0.88 0.9 RG`);
+          commands.push("0.8 w");
+          commands.push(`${cellX} ${rowBottom} m ${cellX} ${row.y} l S`);
+        }
+
+        row.cells[columnIndex].forEach((line, lineIndex) => {
+          addText(
+            commands,
+            line,
+            cellX + 8,
+            row.y - rowPaddingY - 10 - lineIndex * lineHeight,
+            9.4,
+            [0.12, 0.16, 0.22],
+            column.key === "total" ? "F2" : "F1",
+          );
+        });
+
+        cellX += column.width;
+      });
+    });
+
+    const stream = commands.join("\n");
+    const contentId = objects.length;
+    objects[contentId] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+    const pageId = objects.length + 1;
+    objects[pageId] =
+      `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] ` +
+      `/Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${contentId} 0 R >>`;
+    pageObjectIds.push(pageId);
+  });
+
+  objects[pagesId] = `<< /Type /Pages /Count ${pageObjectIds.length} /Kids [${pageObjectIds
+    .map((id) => `${id} 0 R`)
+    .join(" ")}] >>`;
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+
+  for (let index = 1; index < objects.length; index += 1) {
+    offsets[index] = pdf.length;
+    pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
+  }
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length}\n`;
+  pdf += "0000000000 65535 f \n";
+
+  for (let index = 1; index < objects.length; index += 1) {
+    pdf += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
+  }
+
+  pdf += `trailer\n<< /Size ${objects.length} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return new Blob([pdf], { type: "application/pdf" });
+}
+
+async function buildSummaryPdfFile(monthKey) {
+  const records = getSelectedSummaryRecords();
+  if (!records.length) {
+    throw new Error("EMPTY_SUMMARY");
+  }
+
+  const blob = createStyledSummaryPdfBlob(monthKey, records);
+  const fileName = `resumo-mensal-${monthKey}.pdf`;
+  return new File([blob], fileName, { type: "application/pdf" });
+}
+
+async function shareMonthlySummaryFile() {
+  const selectedMonth = summaryMonthSelect?.value || "";
+  const records = getSelectedSummaryRecords();
+
+  if (!selectedMonth || !records.length) {
+    showToast("Nao ha resumo mensal para enviar neste mes.");
+    return;
+  }
+
+  const file = await buildSummaryPdfFile(selectedMonth);
+
+  if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+    try {
+      await navigator.share({
+        title: `Resumo mensal ${formatMonthLabel(selectedMonth)}`,
+        text: `Segue o PDF do resumo mensal de ${formatMonthLabel(selectedMonth)} para envio no WhatsApp.`,
+        files: [file],
+      });
+      showToast("PDF pronto para envio no WhatsApp.");
+      return;
+    } catch {
+      showToast("Envio cancelado. O PDF sera baixado no aparelho.");
+    }
+  }
+
+  downloadFile(file, file.name);
+  window.open("https://wa.me/?text=Segue%20o%20resumo%20mensal%20em%20PDF.", "_blank", "noopener");
+  showToast("PDF gerado. Selecione o arquivo baixado no WhatsApp.");
+}
+
+function updateSummaryToggleState() {
+  if (!summaryToggleButton || !summarySection) {
+    return;
+  }
+
+  summarySection.classList.toggle("hidden", !summaryOpen);
+  summaryToggleButton.textContent = summaryOpen ? "Ocultar resumo mensal" : "Abrir resumo mensal";
+}
+
+function toggleSummarySection() {
+  summaryOpen = !summaryOpen;
+  updateSummaryToggleState();
+
+  if (summaryOpen) {
+    summarySection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function updateAnnotationsToggleState() {
+  if (!annotationsButton || !annotationsSection) {
+    return;
+  }
+
+  annotationsSection.classList.toggle("hidden", !annotationsOpen);
+  annotationsButton.textContent = "Abrir anotacoes do dia";
+  annotationsButton.classList.toggle("hidden", annotationsOpen);
+}
+
+function toggleAnnotationsSection() {
+  annotationsOpen = !annotationsOpen;
+  updateAnnotationsToggleState();
+
+  if (annotationsOpen) {
+    annotationsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function populateNotesMonthOptions(records) {
+  if (!notesMonthSelect) {
+    return;
+  }
+
+  const months = Array.from(new Set(records.map((record) => getNotesMonthKey(record)).filter(Boolean))).sort(
+    (left, right) => right.localeCompare(left),
+  );
+
+  notesMonthSelect.innerHTML = "";
+
+  if (!months.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Nenhum mes disponivel";
+    notesMonthSelect.appendChild(option);
+    notesMonthSelect.disabled = true;
+    return;
+  }
+
+  notesMonthSelect.disabled = false;
+  months.forEach((monthKey) => {
+    const option = document.createElement("option");
+    option.value = monthKey;
+    option.textContent = formatMonthLabel(monthKey);
+    notesMonthSelect.appendChild(option);
+  });
+
+  const currentMonthKey = getLocalDateString().slice(0, 7);
+  notesMonthSelect.value = months.includes(currentMonthKey) ? currentMonthKey : months[0];
+}
+
+function renderNotesReminders() {
+  if (!notesRemindersList || !notesMonthInfo || !notesMonthSelect) {
+    return;
+  }
+
+  notesRemindersList.innerHTML = "";
+  const selectedMonth = notesMonthSelect.value;
+  const selectedDate = notesDateFilter?.value || "";
+
+  if (!selectedMonth) {
+    notesMonthInfo.textContent = "Nenhum mes disponivel.";
+    return;
+  }
+
+  const records = monthlyNotesRecords
+    .filter((record) => getNotesMonthKey(record) === selectedMonth)
+    .filter((record) => !selectedDate || String(record.data || "") === selectedDate)
+    .sort((left, right) => String(right.data || "").localeCompare(String(left.data || "")));
+
+  notesMonthInfo.textContent = `${formatMonthLabel(selectedMonth)} - ${records.length} anotacao(oes).`;
+
+  if (!records.length) {
+    notesRemindersList.innerHTML =
+      '<article class="monthly-record-item"><p>Nenhuma anotacao encontrada neste mes.</p></article>';
+    return;
+  }
+
+  records.forEach((record) => {
+    const article = document.createElement("article");
+    article.className = "monthly-record-item";
+    article.innerHTML = `
+      <strong>Data: ${record.data || "-"}</strong>
+      <p>${record.texto || "-"}</p>
+    `;
+    notesRemindersList.appendChild(article);
+  });
+}
+
+function updateNotesRemindersToggleState() {
+  if (!notesRemindersButton || !notesRemindersSection) {
+    return;
+  }
+
+  notesRemindersSection.classList.toggle("hidden", !notesRemindersOpen);
+  notesRemindersButton.textContent = "Lembretes das anotacoes";
+  notesRemindersButton.classList.toggle("hidden", notesRemindersOpen);
+}
+
+function toggleNotesRemindersSection() {
+  notesRemindersOpen = !notesRemindersOpen;
+  updateNotesRemindersToggleState();
+
+  if (notesRemindersOpen) {
+    notesRemindersSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function applyRemoteEventoOptions(options) {
+  if (!Array.isArray(options) || !options.length) {
+    return;
+  }
+
+  currentEventoOptions = options.filter(Boolean);
+  fillSelect(eventoSelect, currentEventoOptions, "Selecione");
+}
+
+function applyRemotePersonOptions(ausenteOptions, presenteOptions) {
+  if (Array.isArray(ausenteOptions) && ausenteOptions.length) {
+    currentAusenteOptions = ausenteOptions.filter(Boolean);
+    fillSelect(ausenteSelect, currentAusenteOptions, "Selecione");
+  }
+
+  if (Array.isArray(presenteOptions) && presenteOptions.length) {
+    currentPresenteOptions = presenteOptions.filter(Boolean);
+    fillSelect(presenteSelect, currentPresenteOptions, "Selecione");
+    syncHighlightedSelect(presenteSelect);
+  }
+}
+
+function updateReviewAlert() {
+  submitButton?.classList.toggle("is-reviewing", Boolean(devedorSelect.value));
+}
+
+function maybeNotifyReviewAlert() {
+  if (!devedorSelect.value) {
+    lastReviewNoticeKey = "";
+    submitButton?.classList.remove("is-reviewing");
+    return;
+  }
+
+  const noticeKey = `${eventoSelect.value}|${ausenteSelect.value}|${presenteSelect.value}|${devedorSelect.value}`;
+  if (noticeKey === lastReviewNoticeKey) {
+    return;
+  }
+
+  lastReviewNoticeKey = noticeKey;
+  showToast("Confira os dados antes do envio!");
+}
+
+function fieldCountsAsComplete(field) {
+  const control = field.querySelector("input, select, textarea");
+  if (!control) {
+    return true;
+  }
+
+  if (field.classList.contains("hidden") || control.disabled) {
+    return true;
+  }
+
+  if (control.required) {
+    return typeof control.checkValidity === "function" ? control.checkValidity() : Boolean(control.value);
+  }
+
+  return Boolean(control.value);
+}
+
+function updateFieldHaloState() {
+  getManagedFields().forEach((field) => {
+    const isComplete = fieldCountsAsComplete(field);
+    field.classList.toggle("is-pending", !isComplete);
+    field.classList.toggle("is-complete", isComplete);
+  });
+}
+
+function updateSettlementPreview() {
+  const { pagador, credor } = getSettlementState();
+  credorResultado.value = credor || "-";
+  credorField?.classList.toggle("is-complete", Boolean(credor));
+  credorField?.classList.toggle("is-pending", !credor);
+
+  if (pagador) {
+    setSingleSelectValue(devedorSelect, pagador, "Calculando");
+  } else if (devedorSelect.disabled) {
+    setSingleSelectValue(devedorSelect, "", "Selecione");
+  }
+
+  updateFieldHaloState();
+}
+
+function configurePagadorField(rule) {
+  if (rule.pagadorMode === "manual") {
+    fillSelect(devedorSelect, [TEAM_BOX, ...currentAusenteOptions], "Selecione");
+    devedorSelect.disabled = false;
+    devedorField.classList.remove("is-disabled");
+    return;
+  }
+
+  devedorSelect.disabled = true;
+  devedorField.classList.add("is-disabled");
+}
+
+function updateEventoState() {
+  const evento = eventoSelect.value;
+  const rule = getRuleForEvent(evento);
+  const isOutro = isOutrosEvent(evento);
+  const isAtraso = isAtrasoEvent(evento);
+
+  eventoOutroField.classList.toggle("hidden", !isOutro);
+  eventoOutroInput.required = isOutro;
+  if (!isOutro) {
+    eventoOutroInput.value = "";
+  }
+
+  atrasoTempoField.classList.toggle("hidden", !isAtraso);
+  atrasoTempoSelect.required = isAtraso;
+  if (!isAtraso) {
+    atrasoTempoSelect.value = "";
+  }
+
+  ausenteSelect.disabled = rule.disableAusente;
+  ausenteSelect.required = !rule.disableAusente;
+  ausenteField.classList.toggle("is-disabled", rule.disableAusente);
+  if (rule.disableAusente) {
+    ausenteSelect.value = "";
+  }
+
+  presenteSelect.disabled = rule.disableSubstituto;
+  presenteSelect.required = !rule.disableSubstituto;
+  presenteField.classList.toggle("is-disabled", rule.disableSubstituto);
+  if (rule.disableSubstituto) {
+    presenteSelect.value = "";
+  }
+
+  turnoSelect.disabled = rule.disableTurno;
+  turnoSelect.required = !rule.disableTurno;
+  turnoField.classList.toggle("is-disabled", rule.disableTurno);
+  if (rule.disableTurno) {
+    turnoSelect.value = "";
+  }
+
+  configurePagadorField(rule);
+  updateSettlementPreview();
+  updateReviewAlert();
+  maybeNotifyReviewAlert();
+  syncHighlightedSelect(presenteSelect);
+  updateFieldHaloState();
+}
+
+function getLocalDateString(date = new Date()) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+}
+
+function formatShortDate(dateKey) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(`${dateKey}T12:00:00`));
+}
+
+function formatLongDate(dateKey) {
+  const value = new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${dateKey}T12:00:00`));
+
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function normalizeSheetDate(value) {
+  const match = String(value || "").trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) {
+    return null;
+  }
+
+  const [, day, month, year] = match;
+  return `${year}-${month}-${day}`;
+}
+
+function parseCsvRows(csvText) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let insideQuotes = false;
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const char = csvText[index];
+    const nextChar = csvText[index + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !insideQuotes) {
+      row.push(cell.trim());
+      cell = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !insideQuotes) {
+      if (char === "\r" && nextChar === "\n") {
+        index += 1;
+      }
+
+      row.push(cell.trim());
+      if (row.some((value) => value !== "")) {
+        rows.push(row);
+      }
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    cell += char;
+  }
+
+  if (cell.length || row.length) {
+    row.push(cell.trim());
+    if (row.some((value) => value !== "")) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+async function fetchScheduleSheetRows(sheetTitle) {
+  const url = new URL(`https://docs.google.com/spreadsheets/d/${SCHEDULE_SPREADSHEET_ID}/gviz/tq`);
+  url.searchParams.set("tqx", "out:csv");
+  url.searchParams.set("sheet", sheetTitle);
+  url.searchParams.set("range", "A3:R400");
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    mode: "cors",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Falha ao carregar a aba ${sheetTitle}.`);
+  }
+
+  const csvText = await response.text();
+  return parseCsvRows(csvText).filter((row) => row.some((cell) => String(cell || "").trim()));
+}
+
+async function fetchScheduleHighlights() {
+  const url = new URL(`https://docs.google.com/spreadsheets/d/${SCHEDULE_SPREADSHEET_ID}/gviz/tq`);
+  url.searchParams.set("tqx", "out:csv");
+  url.searchParams.set("sheet", "DESTAQUES APP");
+  url.searchParams.set("range", "A2:F800");
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    mode: "cors",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return new Map();
+  }
+
+  const rows = parseCsvRows(await response.text());
+  const highlights = new Map();
+
+  rows.forEach((row) => {
+    const dateKey = String(row[0] || "").trim();
+    const sigla = normalizeToken(row[1] || "");
+    const isMarked = normalizeText(row[2]) !== "false";
+
+    if (!dateKey || !sigla || !isMarked) {
+      return;
+    }
+
+    if (!highlights.has(dateKey)) {
+      highlights.set(dateKey, new Set());
+    }
+
+    highlights.get(dateKey).add(sigla);
+  });
+
+  return highlights;
+}
+
+async function fetchVacationSheetRows() {
+  const url = new URL(`https://docs.google.com/spreadsheets/d/${SCHEDULE_SPREADSHEET_ID}/gviz/tq`);
+  url.searchParams.set("tqx", "out:csv");
+  url.searchParams.set("sheet", SCHEDULE_VACATION_SHEET_TITLE);
+  url.searchParams.set("range", "A3:F80");
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    mode: "cors",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const csvText = await response.text();
+  return parseCsvRows(csvText).filter((row) => {
+    const month = String(row[0] || "").trim();
+    const start = String(row[2] || "").trim();
+    const end = String(row[3] || "").trim();
+    const label = String(row[4] || "").trim();
+    return Boolean(month && start && end && label);
+  });
+}
+
+function buildVacationLookup(rows) {
+  const lookup = new Map();
+
+  rows.forEach((row) => {
+    const start = normalizeSheetDate(row[2]);
+    const end = normalizeSheetDate(row[3]);
+    const label = String(row[4] || "").trim();
+
+    if (!start || !end || !label) {
+      return;
+    }
+
+    const startDate = new Date(`${start}T12:00:00`);
+    const endDate = new Date(`${end}T12:00:00`);
+
+    for (let cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
+      const dateKey = getLocalDateString(cursor);
+      if (!lookup.has(dateKey)) {
+        lookup.set(dateKey, []);
+      }
+
+      lookup.get(dateKey).push(label);
+    }
+  });
+
+  return lookup;
+}
+
+function extractVacationSiglas(label) {
+  return String(label || "")
+    .split("(")[0]
+    .match(/\b(?:[A-Z]{2}|L2)\b/g)?.map((value) => value.trim().toUpperCase()) || [];
+}
+
+function getVacationOrderForDate(dateKey) {
+  const labels = scheduleDaysByDate.get(dateKey)?.vacationLabel || scheduleVacationsByDate.get(dateKey) || [];
+  const labelList = Array.isArray(labels) ? labels : [labels];
+  const orderedSiglas = extractVacationSiglas(labelList.join(" "));
+  const uniqueSiglas = [];
+
+  orderedSiglas.forEach((sigla) => {
+    if (!uniqueSiglas.includes(sigla)) {
+      uniqueSiglas.push(sigla);
+    }
+  });
+
+  return uniqueSiglas;
+}
+
+function getVacationPosition(sigla, vacationOrder, showVacationPositions) {
+  if (!showVacationPositions || !Array.isArray(vacationOrder) || vacationOrder.length < 2) {
+    return 0;
+  }
+
+  const index = vacationOrder.indexOf(normalizeToken(sigla));
+  return index === -1 ? 0 : index + 1;
+}
+
+function appendVacationTokenDisplay(token, sigla, vacationOrder, showVacationPositions) {
+  const parts = String(sigla || "").toUpperCase().split(/([/-])/);
+  const isCombinedSigla = parts.some((part) => part === "/" || part === "-");
+
+  parts.forEach((part) => {
+    if (!/^(?:[A-Z]{2}|L2)$/.test(part)) {
+      token.appendChild(document.createTextNode(part));
+      return;
+    }
+
+    const partWrap = document.createElement("span");
+    partWrap.className = "sigla-token__part";
+
+    const vacationPart = document.createElement("span");
+    vacationPart.className = isCombinedSigla ? "sigla-token__vacation-part" : "sigla-token__vacation-label";
+    vacationPart.textContent = part;
+
+    const position = getVacationPosition(part, vacationOrder, showVacationPositions);
+    if (position) {
+      const wrap = document.createElement("span");
+      wrap.className = "sigla-token__vacation-wrap";
+      wrap.appendChild(vacationPart);
+
+      const marker = document.createElement("span");
+      marker.className = "sigla-token__position";
+      marker.textContent = String(position);
+      marker.setAttribute("aria-hidden", "true");
+      wrap.appendChild(marker);
+      partWrap.appendChild(wrap);
+    } else {
+      partWrap.appendChild(vacationPart);
+    }
+
+    token.appendChild(partWrap);
+  });
+}
+
+async function loadScheduleData() {
+  const days = [];
+  const [vacationRows, rowsBySheet] = await Promise.all([
+    fetchVacationSheetRows(),
+    Promise.all(
+      SCHEDULE_SHEET_SOURCES.map(async ([sheetTitle, weekdayLabel]) => ({
+        weekdayLabel,
+        rows: await fetchScheduleSheetRows(sheetTitle),
+      })),
+    ),
+  ]);
+  const vacationsByDate = buildVacationLookup(vacationRows);
+
+  rowsBySheet.forEach(({ weekdayLabel, rows }) => {
+    rows.forEach((row) => {
+      const dateKey = normalizeSheetDate(row[0]);
+      if (!dateKey) {
+        return;
+      }
+
+      const siglas = row
+        .slice(1)
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+
+      if (!siglas.length) {
+        return;
+      }
+
+      days.push({
+        date: dateKey,
+        weekdayLabel,
+        siglas,
+        vacationLabel: vacationsByDate.get(dateKey) || null,
+      });
+    });
+  });
+
+  days.sort((left, right) => left.date.localeCompare(right.date));
+  orderedScheduleDates = days.map((item) => item.date);
+  scheduleDaysByDate = new Map(days.map((item) => [item.date, item]));
+  scheduleHighlightsByDate = await fetchScheduleHighlights();
+  scheduleVacationsByDate = vacationsByDate;
+
+  if (rangeLabel && orderedScheduleDates.length) {
+    rangeLabel.textContent = `${formatShortDate(orderedScheduleDates[0])} - ${formatShortDate(
+      orderedScheduleDates[orderedScheduleDates.length - 1],
+    )}`;
+  }
+
+  if (scheduleDateInput && !scheduleDateInput.value) {
+    scheduleDateInput.value = getLocalDateString();
+  }
+
+  renderScheduleByDate(scheduleDateInput?.value || getLocalDateString());
+}
+
+function isHighlightedToken(token, highlights) {
+  const normalizedToken = normalizeToken(token);
+  if (highlights.has(normalizedToken)) {
+    return true;
+  }
+
+  return normalizedToken.split("/").some((part) => highlights.has(part));
+}
+
+function isVacationToken(token, vacationSiglas) {
+  if (!vacationSiglas || vacationSiglas.size === 0) {
+    return false;
+  }
+
+  return normalizeToken(token)
+    .split(/[/-]/)
+    .some((part) => vacationSiglas.has(part));
+}
+
+function renderScheduleByDate(dateKey) {
+  if (!scheduleSiglasGrid || !formattedScheduleDate || !scheduleHeading || !weekdayBadge || !todayBadge) {
+    return;
+  }
+
+  const day = scheduleDaysByDate.get(dateKey);
+  const isToday = dateKey === getLocalDateString();
+
+  scheduleDateInput.value = dateKey;
+  scheduleSiglasGrid.innerHTML = "";
+  todayBadge.classList.toggle("hidden", !isToday);
+
+  if (!day) {
+    scheduleHeading.textContent = isToday ? "Data atual" : "Dia selecionado";
+    formattedScheduleDate.textContent = dateKey ? formatLongDate(dateKey) : "-";
+    weekdayBadge.textContent = "";
+    scheduleEmptyState?.classList.remove("hidden");
+    scheduleSiglasGrid.innerHTML = "";
+    outOfRangeNotice?.classList.toggle("hidden", !orderedScheduleDates.length || orderedScheduleDates.includes(dateKey));
+    return;
+  }
+
+  scheduleHeading.textContent = isToday ? "Data atual" : "Dia selecionado";
+  formattedScheduleDate.textContent = formatLongDate(day.date);
+  weekdayBadge.textContent = day.weekdayLabel;
+  scheduleEmptyState?.classList.add("hidden");
+  outOfRangeNotice?.classList.add("hidden");
+
+  const highlights = scheduleHighlightsByDate.get(day.date) || new Set();
+  const vacationOrder = getVacationOrderForDate(day.date);
+  const vacationSiglas = new Set(vacationOrder);
+  const showVacationPositions = vacationSiglas.size > 1;
+
+  day.siglas.forEach((token, index) => {
+    const item = document.createElement("div");
+    item.className = "sigla-item";
+    const highlighted = isHighlightedToken(token, highlights);
+    const isVacation = isVacationToken(token, vacationSiglas);
+    const tokenClass = isVacation
+      ? "sigla-token sigla-button sigla-token--vacation"
+      : highlighted
+        ? "sigla-token sigla-button sigla-token--checked sigla-token--highlight"
+        : "sigla-token sigla-button";
+
+    const tokenNode = document.createElement("button");
+    tokenNode.type = "button";
+    tokenNode.className = tokenClass;
+
+    if (isVacation) {
+      appendVacationTokenDisplay(tokenNode, token, vacationOrder, showVacationPositions);
+    } else {
+      tokenNode.textContent = token;
+    }
+
+    const counter = document.createElement("span");
+    counter.className = "sigla-index";
+    counter.textContent = String(index + 1);
+
+    item.appendChild(tokenNode);
+    item.appendChild(counter);
+    scheduleSiglasGrid.appendChild(item);
+  });
+}
+
+function clampScheduleDate(dateKey) {
+  if (!orderedScheduleDates.length) {
+    return dateKey;
+  }
+
+  if (dateKey < orderedScheduleDates[0]) {
+    return orderedScheduleDates[0];
+  }
+
+  if (dateKey > orderedScheduleDates[orderedScheduleDates.length - 1]) {
+    return orderedScheduleDates[orderedScheduleDates.length - 1];
+  }
+
+  return dateKey;
+}
+
+function shiftScheduleDate(delta) {
+  const current = scheduleDateInput?.value || getLocalDateString();
+  const date = new Date(`${current}T12:00:00`);
+  date.setDate(date.getDate() + delta);
+  renderScheduleByDate(clampScheduleDate(getLocalDateString(date)));
+}
+
+function computeSettlementFromValues({ evento, ausente, presente, turno, atrasoTempo, manualPagador }) {
+  const rule = getRuleForEvent(evento);
+  const pagador =
+    rule.pagadorMode === "absent" ? ausente || "" : rule.pagadorMode === "team" ? TEAM_BOX : manualPagador || "";
+  const credor = rule.credorMode === "team" ? TEAM_BOX : rule.credorMode === "substitute" ? presente || "" : "";
+  const valorPagar = rule.amountMode === "atraso" ? Number(atrasoTempo || 0) * ATRASO_RATE || "" : getValorPorTurno(turno);
+
+  return { rule, pagador, credor, valorPagar };
+}
+
+function getEditSettlementState() {
+  return computeSettlementFromValues({
+    evento: editEventoSelect.value,
+    ausente: editAusenteSelect.value,
+    presente: editPresenteSelect.value,
+    turno: editTurnoSelect.value,
+    atrasoTempo: editAtrasoTempoSelect.value,
+    manualPagador: editDevedorInput.value,
+  });
+}
+
+function updateEditEventoState() {
+  if (!editRecordForm) {
+    return;
+  }
+
+  const rule = getRuleForEvent(editEventoSelect.value);
+  const isOutro = isOutrosEvent(editEventoSelect.value);
+  const isAtraso = isAtrasoEvent(editEventoSelect.value);
+  const editEventoDescricaoField = editEventoDescricaoInput.closest(".field");
+  const editAtrasoTempoField = editAtrasoTempoSelect.closest(".field");
+  const editPresenteField = editPresenteSelect.closest(".field");
+  const editTurnoField = editTurnoSelect.closest(".field");
+  const editAusenteField = editAusenteSelect.closest(".field");
+
+  editEventoDescricaoField?.classList.toggle("hidden", !isOutro);
+  editEventoDescricaoInput.required = isOutro;
+  if (!isOutro) {
+    editEventoDescricaoInput.value = "";
+  }
+
+  editAtrasoTempoField?.classList.toggle("hidden", !isAtraso);
+  editAtrasoTempoSelect.required = isAtraso;
+  if (!isAtraso) {
+    editAtrasoTempoSelect.value = "";
+  }
+
+  editAusenteSelect.disabled = rule.disableAusente;
+  editAusenteSelect.required = !rule.disableAusente;
+  editAusenteField?.classList.toggle("is-disabled", rule.disableAusente);
+  if (rule.disableAusente) {
+    editAusenteSelect.value = "";
+  }
+
+  editPresenteSelect.disabled = rule.disableSubstituto;
+  editPresenteField?.classList.toggle("is-disabled", rule.disableSubstituto);
+  if (rule.disableSubstituto) {
+    editPresenteSelect.value = "";
+  }
+
+  editTurnoSelect.disabled = rule.disableTurno;
+  editTurnoField?.classList.toggle("is-disabled", rule.disableTurno);
+  if (rule.disableTurno) {
+    editTurnoSelect.value = "";
+  }
+
+  editDevedorInput.readOnly = rule.pagadorMode !== "manual";
+  editCredorInput.readOnly = true;
+
+  const { pagador, credor } = getEditSettlementState();
+  editDevedorInput.value = pagador || "";
+  editCredorInput.value = credor || "";
+}
+
+function openEditModal() {
+  if (!latestSyncedRecord?.sourceRow || !editRecordModal) {
+    showToast("Nao ha registro sincronizado pronto para edicao.");
+    return;
+  }
+
+  fillSelect(editEventoSelect, currentEventoOptions, "Selecione");
+  fillSelect(editAtrasoTempoSelect, TEMPO_ATRASO_OPTIONS, "Selecione");
+  fillSelect(editAusenteSelect, currentAusenteOptions, "Selecione");
+  fillSelect(editPresenteSelect, currentPresenteOptions, "Selecione");
+  fillSelect(editTurnoSelect, TURNO_OPTIONS, "Selecione");
+
+  editSourceRow.value = String(latestSyncedRecord.sourceRow || "");
+  editDataInput.value = latestSyncedRecord.data || "";
+  editEventoSelect.value = latestSyncedRecord.evento || "";
+  editEventoDescricaoInput.value = latestSyncedRecord.eventoDescricao || "";
+  if (latestSyncedRecord.atrasoTempo) {
+    editAtrasoTempoSelect.value = String(latestSyncedRecord.atrasoTempo);
+  }
+  editAusenteSelect.value = latestSyncedRecord.ausente || "";
+  editPresenteSelect.value = latestSyncedRecord.presente || "";
+  editTurnoSelect.value = latestSyncedRecord.turno || "";
+  editDevedorInput.value = latestSyncedRecord.devedor || "";
+  editCredorInput.value = latestSyncedRecord.credor || "";
+
+  updateEditEventoState();
+  editRecordModal.classList.remove("hidden");
+  editRecordModal.setAttribute("aria-hidden", "false");
+}
+
+function closeEditModal() {
+  if (!editRecordModal) {
+    return;
+  }
+
+  editRecordModal.classList.add("hidden");
+  editRecordModal.setAttribute("aria-hidden", "true");
+}
+
+function buildEditPayload() {
+  const { pagador, credor, valorPagar } = getEditSettlementState();
+  const evento = editEventoSelect.value;
+
+  return {
+    kind: "updateRecord",
+    sourceRow: Number(editSourceRow.value || 0),
     data: editDataInput.value,
     dataDoEvento: editDataInput.value,
     evento,
@@ -1279,5 +2377,4 @@ window.addEventListener("appinstalled", () => {
 });
 
 initializeApp();
-
 
