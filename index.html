@@ -106,7 +106,7 @@
           <div id="scheduleSiglasGrid" class="siglas-grid"></div>
         </section>
 
-        <section class="install-card" id="installCard">
+        <section class="install-card hidden" id="installCard">
           <div>
             <p class="queue-title">Instalar no smartphone</p>
             <p class="queue-copy" id="installHelpText">
@@ -118,7 +118,7 @@
           </button>
         </section>
 
-        <section class="form-card">
+        <section class="form-card hidden" id="eventEntryCard">
           <div class="section-heading">
             <p class="queue-title">LanÃ§amento do evento</p>
             <p class="queue-copy">Preencha os campos em sequÃªncia para evitar omissÃµes no registro.</p>
@@ -188,7 +188,7 @@
           </form>
         </section>
 
-        <section class="queue-card">
+        <section class="queue-card hidden">
           <div>
             <p class="queue-title">Fila offline</p>
             <p class="queue-copy">
@@ -198,7 +198,7 @@
           <strong id="queueCount">0 pendente(s)</strong>
         </section>
 
-        <div class="queue-action">
+        <div class="queue-action hidden">
           <button type="button" id="syncButton" class="secondary-button">
             Reenviar pendentes
           </button>
@@ -213,10 +213,10 @@
               </p>
             </div>
           </div>
-          <div id="latestSyncedCard" class="history-list"></div>
+          <label class="field history-date-field"><span>Pesquisar por dia</span><input id="registeredDateFilter" type="date" /></label>\n          <div id="latestSyncedCard" class="history-list"></div>
         </section>
 
-        <div class="notes-action">
+        <div class="notes-action hidden">
           <button type="button" id="annotationsButton" class="secondary-button report-button">
             Abrir anotaÃ§Ãµes do dia
           </button>
