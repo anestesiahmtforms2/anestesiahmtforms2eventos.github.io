@@ -1595,6 +1595,24 @@ function renderScheduleByDate(dateKey) {
   });
 }
 
+function repairVisibleText_() {
+  const replacements = {
+    "Ã§": "ç", "Ã£": "ã", "Ã¡": "á", "Ã©": "é", "Ãª": "ê",
+    "Ã­": "í", "Ã³": "ó", "Ã´": "ô", "Ãµ": "õ", "Ãº": "ú",
+    "Ã§Ã£": "ção", "Ãšltimo": "Último", "LanÃ§amento": "Lançamento",
+    "DescriÃ§Ã£o": "Descrição", "MÃºltiplo": "Múltiplo",
+    "anotaÃ§Ãµes": "anotações", "registros sincronizado": "registros sincronizados"
+  };
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((node) => {
+    let value = node.nodeValue;
+    Object.entries(replacements).forEach(([from, to]) => { value = value.split(from).join(to); });
+    node.nodeValue = value;
+  });
+}
+
 function resolveMemberOption(sigla) {
   const key = normalizeToken(sigla);
   return currentAusenteOptions.find((option) => {
@@ -1610,21 +1628,41 @@ function getClickedMemberChoices(token, isVacation) {
   return isVacation || choices.length > 1 ? choices : [choices[0] || token];
 }
 
+function showMemberChoiceDialog(choices, onChoose) {
+  const old = document.getElementById("memberChoiceDialog");
+  old?.remove();
+  const overlay = document.createElement("div");
+  overlay.id = "memberChoiceDialog";
+  overlay.className = "member-choice-dialog";
+  overlay.innerHTML = '<div class="member-choice-panel"><h2>Escolha o membro</h2><p>Selecione diretamente a sigla que será registrada.</p><div class="member-choice-list"></div><button type="button" class="secondary-button member-choice-cancel">Cancelar</button></div>';
+  const list = overlay.querySelector(".member-choice-list");
+  choices.forEach((sigla) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "member-choice-button";
+    button.textContent = sigla + " — " + resolveMemberOption(sigla);
+    button.addEventListener("click", () => { overlay.remove(); onChoose(resolveMemberOption(sigla)); });
+    list.appendChild(button);
+  });
+  overlay.querySelector(".member-choice-cancel").addEventListener("click", () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+
 function openEventForSigla(token, dateKey, isVacation) {
   const choices = getClickedMemberChoices(token, isVacation);
-  const displayChoices = choices.map(resolveMemberOption);
-  let selectedIndex = 0;
-  if (displayChoices.length > 1) {
-    const answer = window.prompt(`Escolha o membro para registrar:\\n${displayChoices.map((value, index) => `${index + 1} - ${value}`).join("\\n")}`, "1");
-    selectedIndex = Number(answer) - 1;
-    if (!Number.isInteger(selectedIndex) || !displayChoices[selectedIndex]) return;
+  const openForm = (selected) => {
+    eventEntryCard?.classList.remove("hidden");
+    dataInput.value = dateKey;
+    ausenteSelect.value = selected || "";
+    eventEntryCard?.scrollIntoView({ behavior: "smooth", block: "start" });
+    updateEventoState();
+    updateFieldHaloState();
+  };
+  if (choices.length > 1) {
+    showMemberChoiceDialog(choices, openForm);
+    return;
   }
-  eventEntryCard?.classList.remove("hidden");
-  dataInput.value = dateKey;
-  ausenteSelect.value = displayChoices[selectedIndex] || "";
-  eventEntryCard?.scrollIntoView({ behavior: "smooth", block: "start" });
-  updateEventoState();
-  updateFieldHaloState();
+  openForm(resolveMemberOption(choices[0]));
 }
 
 function clampScheduleDate(dateKey) {
@@ -2444,5 +2482,6 @@ window.addEventListener("appinstalled", () => {
   showToast("Aplicativo instalado com sucesso.");
 });
 
+repairVisibleText_();
 initializeApp();
 
