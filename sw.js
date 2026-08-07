@@ -1,11 +1,11 @@
-const CACHE_NAME = "eventos-escala-v21";
+const CACHE_NAME = "eventos-escala-v22";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
-  "./app.js?v=21",
-  "./storage-shim.js?v=21",
-  "./auth-fallback.js?v=21",
+  "./app.js?v=22",
+  "./storage-shim.js?v=22",
+  "./auth-fallback.js?v=22",
   "./config.js",
   "./manifest.webmanifest",
   "./assets/icon-192.png",
@@ -81,3 +81,4 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+
