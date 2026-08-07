@@ -54,6 +54,7 @@
         return;
       }
 
+      event.preventDefault();
       unlockFallback();
       showFallbackMessage("Acesso liberado.");
     });
