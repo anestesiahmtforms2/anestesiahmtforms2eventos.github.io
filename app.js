@@ -165,6 +165,8 @@ const credorField = document.getElementById("credorField");
 const credorResultado = document.getElementById("credorResultado");
 const queueCount = document.getElementById("queueCount");
 const latestSyncedCard = document.getElementById("latestSyncedCard");
+const registeredDateFilter = document.getElementById("registeredDateFilter");
+const eventEntryCard = document.getElementById("eventEntryCard");
 const annotationsButton = document.getElementById("annotationsButton");
 const annotationsSection = document.getElementById("annotationsSection");
 const annotationsForm = document.getElementById("annotationsForm");
@@ -214,6 +216,7 @@ let currentAusenteOptions = [...AUSENTE_OPTIONS];
 let currentPresenteOptions = [...PRESENTE_OPTIONS];
 let monthlyNotesRecords = [];
 let monthlySummaryRecords = [];
+let syncedRecords = [];
 let appBootstrapped = false;
 let annotationsOpen = false;
 let notesRemindersOpen = false;
@@ -499,6 +502,25 @@ function renderLatestSynced(record = readLatestSyncedCache()) {
     ${historyLine}
   `;
   latestSyncedCard.appendChild(card);
+}
+
+function renderRegisteredRecords(dateKey = registeredDateFilter?.value || getLocalDateString()) {
+  if (!latestSyncedCard) return;
+  const records = syncedRecords.filter((record) => String(record.data || "") === dateKey);
+  latestSyncedCard.innerHTML = "";
+  if (!records.length) {
+    latestSyncedCard.innerHTML = '<article class="history-item"><p class="queue-copy">Nenhum registro encontrado para este dia.</p></article>';
+    return;
+  }
+  records.forEach((record) => {
+    const card = document.createElement("article");
+    card.className = "history-item history-item--editable";
+    if (record.sourceRow) card.dataset.sourceRow = String(record.sourceRow);
+    const historyLine = record.historicoAlteracoes ? `<p class="history-edit-line">${record.historicoAlteracoes}</p>` : "";
+    card.innerHTML = `<strong>Data do Evento: ${record.data || "-"} | Tipo de Evento: ${record.evento || "-"}</strong><p>${formatLatestSyncedText(record)}</p>${historyLine}`;
+    card.addEventListener("dblclick", () => openEditModal(record));
+    latestSyncedCard.appendChild(card);
+  });
 }
 
 function formatMonthLabel(monthKey) {
@@ -1482,6 +1504,7 @@ async function loadScheduleData() {
 
   if (scheduleDateInput && !scheduleDateInput.value) {
     scheduleDateInput.value = getLocalDateString();
+  if (registeredDateFilter) registeredDateFilter.value = getLocalDateString();
   }
 
   renderScheduleByDate(scheduleDateInput?.value || getLocalDateString());
@@ -1553,6 +1576,7 @@ function renderScheduleByDate(dateKey) {
     const tokenNode = document.createElement("button");
     tokenNode.type = "button";
     tokenNode.className = tokenClass;
+    tokenNode.addEventListener("click", () => openEventForSigla(token, day.date, isVacation));
 
     if (isVacation) {
       appendVacationTokenDisplay(tokenNode, token, vacationOrder, showVacationPositions);
@@ -1568,6 +1592,23 @@ function renderScheduleByDate(dateKey) {
     item.appendChild(counter);
     scheduleSiglasGrid.appendChild(item);
   });
+}
+
+function openEventForSigla(token, dateKey, isVacation) {
+  const choices = String(token || "").split(/[\\/|-]/).map((value) => value.trim()).filter(Boolean);
+  let selected = choices[0] || token;
+  if (isVacation || choices.length > 1) {
+    const answer = window.prompt(`Escolha o membro para registrar:\\n${choices.map((value, index) => `${index + 1} - ${value}`).join("\\n")}`, "1");
+    const index = Number(answer) - 1;
+    if (!Number.isInteger(index) || !choices[index]) return;
+    selected = choices[index];
+  }
+  eventEntryCard?.classList.remove("hidden");
+  dataInput.value = dateKey;
+  if (currentAusenteOptions.includes(selected)) ausenteSelect.value = selected;
+  eventEntryCard?.scrollIntoView({ behavior: "smooth", block: "start" });
+  updateEventoState();
+  updateFieldHaloState();
 }
 
 function clampScheduleDate(dateKey) {
@@ -1866,6 +1907,8 @@ function updateInstallUI() {
   if (!installCard || !installButton || !installHelpText) {
     return;
   }
+  installCard.classList.add("hidden");
+  return;
 
   if (isStandaloneMode()) {
     installCard.classList.add("is-hidden");
@@ -2113,7 +2156,12 @@ async function fetchBootstrapData() {
     latestSyncedRecord = data.latestRecord;
   }
 
+  syncedRecords = Array.isArray(data.monthlyRecords) ? data.monthlyRecords : [];
   renderLatestSynced(data.latestRecord || readLatestSyncedCache());
+  if (registeredDateFilter) {
+    registeredDateFilter.value = registeredDateFilter.value || getLocalDateString();
+    renderRegisteredRecords();
+  }
   renderAnnotation(null);
   monthlyNotesRecords = Array.isArray(data.monthlyNotes) ? data.monthlyNotes : [];
   monthlySummaryRecords = Array.isArray(data.monthlySummary) ? data.monthlySummary : [];
@@ -2352,8 +2400,9 @@ todayScheduleButton?.addEventListener("click", () => {
 });
 nextScheduleButton?.addEventListener("click", () => shiftScheduleDate(1));
 latestSyncedCard?.addEventListener("dblclick", () => {
-  openEditModal();
+  openEditModal(latestSyncedRecord);
 });
+registeredDateFilter?.addEventListener("change", () => renderRegisteredRecords());
 closeEditRecordButton?.addEventListener("click", closeEditModal);
 editRecordBackdrop?.addEventListener("click", closeEditModal);
 authForm?.addEventListener("submit", handleAuthSubmit);
