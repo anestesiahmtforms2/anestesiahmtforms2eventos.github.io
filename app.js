@@ -224,6 +224,7 @@ let orderedScheduleDates = [];
 let scheduleDaysByDate = new Map();
 let scheduleHighlightsByDate = new Map();
 let scheduleVacationsByDate = new Map();
+let memoryAuthState = null;
 
 function normalizeText(value) {
   return String(value || "")
@@ -239,18 +240,37 @@ function normalizeToken(value) {
 
 function readStoredAuth() {
   try {
-    return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || "null");
+    const rawValue = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!rawValue) {
+      return memoryAuthState;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    memoryAuthState = parsedValue;
+    return parsedValue;
   } catch {
-    return null;
+    return memoryAuthState;
   }
 }
 
 function writeStoredAuth(payload) {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+  memoryAuthState = payload;
+
+  try {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Some mobile browsers or installed PWAs can temporarily block storage writes.
+  }
 }
 
 function clearStoredAuth() {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
+  memoryAuthState = null;
+
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup failures and continue with the in-memory state.
+  }
 }
 
 function getManagedFields() {
@@ -602,19 +622,7 @@ function getSelectedSummaryRecords() {
   }
 
   return monthlySummaryRecords
-    .filter((record) => getSummaryMonthKey(record) === selectedMonth)
-    .sort((left, right) => {
-      const byDebtor = String(left.devedor || "").localeCompare(String(right.devedor || ""));
-      if (byDebtor !== 0) {
-        return byDebtor;
-      }
-      return String(left.credor || "").localeCompare(String(right.credor || ""));
-    });
-}
-
-function downloadFile(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElemen…8201 tokens truncated…   sourceRow: Number(editSourceRow.value || 0),
+   …8316 tokens truncated…   sourceRow: Number(editSourceRow.value || 0),
     data: editDataInput.value,
     dataDoEvento: editDataInput.value,
     evento,
