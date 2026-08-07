@@ -92,6 +92,11 @@ body::before {
   gap: 16px;
 }
 
+/* The main screen starts directly with the daily search; the logo remains on login. */
+#appContent > .hero-card {
+  display: none;
+}
+
 .hero-card::after,
 .auth-card::after {
   content: "";
@@ -990,15 +995,15 @@ button {
 }
 
 .schedule-card {
-  margin-top: 18px;
-  padding: 10px;
+  margin-top: 0;
+  padding: 16px;
   border-radius: 24px;
   border-color: rgba(199, 154, 62, 0.46);
 }
 
 .search-banner {
-  margin-bottom: 8px;
-  padding: 8px;
+  margin-bottom: 14px;
+  padding: 16px;
   border-radius: 18px;
   background: rgba(220, 232, 238, 0.34);
   border: 1px solid rgba(13, 50, 87, 0.08);
@@ -1027,7 +1032,7 @@ button {
 }
 
 .card-title {
-  font-size: 0.7rem;
+  font-size: 0.92rem;
 }
 
 .range-label {
@@ -1064,14 +1069,14 @@ button {
 
 .controls-grid {
   display: grid;
-  gap: 5px;
-  margin-top: 6px;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .date-field {
   display: grid;
-  gap: 4px;
-  font-size: 0.55rem;
+  gap: 6px;
+  font-size: 0.72rem;
   font-weight: 700;
   padding: 0;
   border-radius: 0;
@@ -1081,8 +1086,8 @@ button {
 
 .date-field input {
   width: 100%;
-  min-height: 0;
-  padding: 8px 10px;
+  min-height: 44px;
+  padding: 10px 12px;
   border-radius: 12px;
   border: 0;
   font: inherit;
@@ -1094,9 +1099,9 @@ button {
 .primary-button {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 0;
-  padding: 8px 6px;
-  font-size: 0.59rem;
+  min-height: 42px;
+  padding: 10px 8px;
+  font-size: 0.72rem;
   line-height: 1.05;
   text-align: center;
   box-shadow: none;
@@ -1393,36 +1398,37 @@ button {
 
 @media (max-width: 430px) {
   .schedule-card {
-    padding: 8px;
+    padding: 12px;
     border-radius: 16px;
   }
 
   .search-banner {
-    margin-bottom: 6px;
-    padding: 6px;
+    margin-bottom: 12px;
+    padding: 14px;
     border-radius: 14px;
   }
 
   .card-title,
   .eyebrow,
   .range-label {
-    font-size: 0.48rem;
+    font-size: 0.68rem;
   }
 
   .controls-grid {
-    gap: 4px;
-    margin-top: 5px;
+    gap: 8px;
+    margin-top: 10px;
   }
 
   .date-field {
-    gap: 3px;
-    font-size: 0.5rem;
+    gap: 5px;
+    font-size: 0.64rem;
   }
 
   .date-field input {
-    padding: 7px 8px;
+    min-height: 42px;
+    padding: 9px 10px;
     border-radius: 10px;
-    font-size: 0.75rem;
+    font-size: 0.9rem;
   }
 
   .quick-actions {
@@ -1431,8 +1437,9 @@ button {
 
   .soft-button,
   .primary-button {
-    padding: 7px 4px;
-    font-size: 0.52rem;
+    min-height: 40px;
+    padding: 9px 4px;
+    font-size: 0.65rem;
   }
 
   .date-title {
