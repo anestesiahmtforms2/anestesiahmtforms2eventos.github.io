@@ -518,7 +518,7 @@ function renderRegisteredRecords(dateKey = registeredDateFilter?.value || getLoc
     card.className = "history-item history-item--editable";
     if (record.sourceRow) card.dataset.sourceRow = String(record.sourceRow);
     const historyLine = record.historicoAlteracoes ? `<p class="history-edit-line">${record.historicoAlteracoes}</p>` : "";
-    card.innerHTML = `<strong>Data do Evento: ${record.data || "-"} | Tipo de Evento: ${record.evento || "-"}</strong><p>${formatLatestSyncedText(record)}</p>${historyLine}`;
+    card.innerHTML = `<strong>Data do Evento:</strong><span class="history-value">${record.data || "-"}</span><strong>Tipo de Evento:</strong><span class="history-value">${record.evento || "-"}</span><strong>Membro Ausente/Atrasado:</strong><span class="history-value">${record.ausente || "-"}</span><strong>Substituto:</strong><span class="history-value">${record.presente || "-"}</span><strong>Turno:</strong><span class="history-value">${record.turno || "-"}</span><strong>Pagador:</strong><span class="history-value">${record.devedor || "-"}</span><strong>Credor:</strong><span class="history-value">${record.credor || "-"}</span>${record.valorPagar ? `<strong>Valor:</strong><span class="history-value">${record.valorPagar}</span>` : ""}${historyLine}`;
     card.addEventListener("dblclick", () => openEditModal(record));
     latestSyncedCard.appendChild(card);
   });
@@ -1640,7 +1640,7 @@ function showMemberChoiceDialog(choices, onChoose) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "member-choice-button";
-    button.textContent = sigla + " — " + resolveMemberOption(sigla);
+    button.textContent = sigla + " — " + resolveMemberOption(sigla).replace(new RegExp("^" + sigla + "\\s*-\\s*", "i"), "");
     button.addEventListener("click", () => { overlay.remove(); onChoose(resolveMemberOption(sigla)); });
     list.appendChild(button);
   });
@@ -2146,7 +2146,11 @@ async function onEditRecordSubmit(event) {
   try {
     await postPayload(payload);
     await fetchBootstrapData();
+    syncedRecords = [payload];
+    registeredDateFilter && (registeredDateFilter.value = payload.data || registeredDateFilter.value);
+    renderRegisteredRecords(payload.data || registeredDateFilter?.value);
     closeEditModal();
+    eventEntryCard?.classList.add("hidden");
     showToast("Registro atualizado com sucesso.");
   } catch {
     showToast("Nao foi possivel salvar a edicao agora.");
