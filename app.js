@@ -2273,6 +2273,7 @@ async function flushQueue() {
 }
 
 function resetForm() {
+  eventEntryCard?.classList.add("hidden");
   form.reset();
   setDefaultDate();
   fillSelect(eventoSelect, currentEventoOptions, "Selecione");
