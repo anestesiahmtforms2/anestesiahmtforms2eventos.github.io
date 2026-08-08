@@ -1964,3 +1964,20 @@ button {
   .siglas-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
   .sigla-token { min-height: 41px; font-size: .9rem !important; }
 }
+
+/* Reducao adicional de 20% na area das siglas. */
+.siglas-grid {
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.sigla-token {
+  min-height: 35px;
+  border-radius: 12px;
+  font-size: clamp(.78rem, 2.8vw, .98rem) !important;
+  padding: 5px 4px;
+}
+@media (max-width: 430px) {
+  .siglas-grid { gap: 5px; margin-top: 7px; }
+  .sigla-token { min-height: 33px; border-radius: 11px; font-size: .76rem !important; }
+}
