@@ -237,6 +237,7 @@ let scheduleDaysByDate = new Map();
 let scheduleHighlightsByDate = new Map();
 let scheduleVacationsByDate = new Map();
 let memoryAuthState = null;
+let pendingEventTokenNode = null;
 
 function normalizeText(value) {
   return String(value || "")
@@ -1610,7 +1611,7 @@ function renderScheduleByDate(dateKey) {
     tokenNode.className = tokenClass;
     tokenNode.addEventListener("click", () => {
       scheduleSiglasGrid.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
-      tokenNode.classList.add("sigla-token--event-open");
+      pendingEventTokenNode = tokenNode;
       const visualToken = normalizeToken(tokenNode.textContent || token);
       const selectedToken = normalizeToken(token).includes("DC") || visualToken.includes("DC") ? "DC" : token;
       openEventForSigla(selectedToken, day.date, isVacation);
@@ -2328,6 +2329,8 @@ async function flushQueue() {
 
 function resetForm() {
   eventEntryCard?.classList.add("hidden");
+  scheduleSiglasGrid?.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
+  pendingEventTokenNode = null;
   form.reset();
   setDefaultDate();
   fillSelect(eventoSelect, currentEventoOptions, "Selecione");
@@ -2365,12 +2368,14 @@ async function onSubmit(event) {
   }
 
   const payload = buildPayload();
+  const markEventAsLaunched = () => pendingEventTokenNode?.classList.add("sigla-token--event-open");
   submitButton.disabled = true;
 
   try {
     if (!navigator.onLine || !APP_CONFIG.endpointUrl) {
       addToQueue(payload);
       prependHistory(payload);
+      markEventAsLaunched();
       resetForm();
       updateConnectionState();
       showToast("Registro salvo localmente para envio posterior.");
@@ -2379,6 +2384,7 @@ async function onSubmit(event) {
 
     await postPayload(payload);
     prependHistory(payload);
+    markEventAsLaunched();
     resetForm();
     await fetchBootstrapData().catch(() => {
       renderLatestSynced();
@@ -2387,6 +2393,7 @@ async function onSubmit(event) {
   } catch {
     addToQueue(payload);
     prependHistory(payload);
+    markEventAsLaunched();
     showToast("Falha no envio. Registro guardado na fila.");
   } finally {
     submitButton.disabled = false;
