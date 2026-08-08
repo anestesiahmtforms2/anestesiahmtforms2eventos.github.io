@@ -85,7 +85,7 @@ const PRESENTE_OPTIONS = [
 ];
 
 const TURNO_OPTIONS = ["Manha", "Tarde", "Integral"];
-const TEMPO_ATRASO_OPTIONS = ["1", "2", "3", "4", "5", "6"];
+const TEMPO_ATRASO_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"];
 const APP_PASSWORD = "8145";
 const AUTH_STORAGE_KEY = "eventos-escala-auth-state";
 const AUTH_DURATION_MS = 90 * 24 * 60 * 60 * 1000;
@@ -518,7 +518,7 @@ function renderRegisteredRecords(dateKey = registeredDateFilter?.value || getLoc
     card.className = "history-item history-item--editable";
     if (record.sourceRow) card.dataset.sourceRow = String(record.sourceRow);
     const historyLine = record.historicoAlteracoes ? `<p class="history-edit-line">${record.historicoAlteracoes}</p>` : "";
-    card.innerHTML = `<strong>Data do Evento:</strong><span class="history-value">${record.data || "-"}</span><strong>Tipo de Evento:</strong><span class="history-value">${record.evento || "-"}</span><strong>Membro Ausente/Atrasado:</strong><span class="history-value">${record.ausente || "-"}</span><strong>Substituto:</strong><span class="history-value">${record.presente || "-"}</span><strong>Turno:</strong><span class="history-value">${record.turno || "-"}</span><strong>Pagador:</strong><span class="history-value">${record.devedor || "-"}</span><strong>Credor:</strong><span class="history-value">${record.credor || "-"}</span>${record.valorPagar ? `<strong>Valor:</strong><span class="history-value">${record.valorPagar}</span>` : ""}${historyLine}`;
+    card.innerHTML = `<div class="history-inline"><strong>Data do Evento:</strong> <span class="history-value">${record.data || "-"}</span></div><div class="history-inline"><strong>Tipo de Evento:</strong> <span class="history-value">${record.evento || "-"}</span></div><div class="history-inline"><strong>Membro Ausente/Atrasado:</strong> <span class="history-value">${record.ausente || "-"}</span></div><div class="history-inline"><strong>Substituto:</strong> <span class="history-value">${record.presente || "-"}</span></div><div class="history-inline"><strong>Turno:</strong> <span class="history-value">${record.turno || "-"}</span></div><div class="history-inline"><strong>Pagador:</strong> <span class="history-value">${record.devedor || "-"}</span></div><div class="history-inline"><strong>Credor:</strong> <span class="history-value">${record.credor || "-"}</span></div>${record.valorPagar ? `<div class="history-inline"><strong>Valor:</strong> <span class="history-value">${record.valorPagar}</span></div>` : ""}${historyLine}`;
     card.addEventListener("dblclick", () => openEditModal(record));
     latestSyncedCard.appendChild(card);
   });
@@ -725,10 +725,10 @@ function createStyledSummaryPdfBlob(monthKey, records) {
   const usableWidth = pageWidth - marginX * 2;
   const tableTopGap = 18;
   const columns = [
-    { label: "DEVEDOR", key: "devedor", width: 138, maxLength: 22 },
-    { label: "CREDOR", key: "credor", width: 138, maxLength: 22 },
-    { label: "DATA(S) DO EVENTO", key: "datas", width: 180, maxLength: 34 },
-    { label: "TOTAL DEVIDO", key: "total", width: usableWidth - 138 - 138 - 180, maxLength: 13 },
+    { label: "DATA(S) DO EVENTO", key: "datas", width: 128, maxLength: 22 },
+    { label: "DEVEDOR", key: "devedor", width: 142, maxLength: 22 },
+    { label: "CREDOR", key: "credor", width: 142, maxLength: 22 },
+    { label: "TOTAL DEVIDO", key: "total", width: usableWidth - 128 - 142 - 142, maxLength: 13 },
   ];
 
   function addRect(commands, x, y, width, height, fillColor, strokeColor, lineWidth = 1) {
@@ -772,12 +772,13 @@ function createStyledSummaryPdfBlob(monthKey, records) {
     });
   }
 
+  const formatPdfDates = (value) => String(value || "-").split(",").map((item) => { const text = item.trim(); const iso = text.match(/^(\\d{4})-(\\d{2})-(\\d{2})/); if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`; const br = text.match(/^(\\d{2})[\\/-](\\d{2})[\\/-](\\d{2,4})/); return br ? `${br[1]}/${br[2]}/${br[3].length === 2 ? "20" + br[3] : br[3]}` : text; }).join(", ");
   const pages = [];
   let pageRows = [];
   let currentY = 684;
 
   records.forEach((record, index) => {
-    const rowCells = columns.map((column) => wrapPdfText(record[column.key], column.maxLength));
+    const rowCells = columns.map((column) => wrapPdfText(column.key === "datas" ? formatPdfDates(record[column.key]) : record[column.key], column.maxLength));
     const maxLines = Math.max(...rowCells.map((lines) => lines.length));
     const rowHeight = rowPaddingY * 2 + maxLines * lineHeight;
 
