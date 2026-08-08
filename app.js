@@ -1623,7 +1623,7 @@ function resolveMemberOption(sigla) {
 
 function getClickedMemberChoices(token, isVacation) {
   const rawParts = String(token || "").split(/[\\/|-]/).map((value) => value.trim()).filter(Boolean);
-  const hasDcGroup = rawParts.some((value) => normalizeToken(value) === "dc");
+  const hasDcGroup = normalizeToken(token).includes("dc") || rawParts.some((value) => normalizeToken(value) === "dc");
   const choices = hasDcGroup ? ["AD", "CR", "LH", "LA"] : rawParts;
   return isVacation || choices.length > 1 ? choices : [choices[0] || token];
 }
