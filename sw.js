@@ -1,11 +1,11 @@
-const CACHE_NAME = "eventos-escala-v30";
+const CACHE_NAME = "eventos-escala-v31";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
-  "./app.js?v=30",
-  "./storage-shim.js?v=30",
-  "./auth-fallback.js?v=30",
+  "./app.js?v=31",
+  "./storage-shim.js?v=31",
+  "./auth-fallback.js?v=31",
   "./config.js",
   "./manifest.webmanifest",
   "./assets/icon-192.png",
