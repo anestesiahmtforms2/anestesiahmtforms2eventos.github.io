@@ -2520,6 +2520,19 @@ closeEditRecordButton?.addEventListener("click", closeEditModal);
 editRecordBackdrop?.addEventListener("click", closeEditModal);
 authForm?.addEventListener("submit", handleAuthSubmit);
 passwordInput?.addEventListener("input", sanitizePasswordInput);
+async function refreshRecordsOnResume() {
+  if (!appBootstrapped || document.visibilityState === "hidden") return;
+  await fetchBootstrapData().catch(() => {});
+  if (registeredDateFilter?.value) renderRegisteredRecords(registeredDateFilter.value);
+}
+
+window.addEventListener("pageshow", refreshRecordsOnResume);
+window.addEventListener("focus", refreshRecordsOnResume);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshRecordsOnResume();
+});
+window.setInterval(refreshRecordsOnResume, 30000);
+
 window.addEventListener("online", () => {
   updateConnectionState();
   flushQueue().catch(() => {});
