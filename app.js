@@ -2330,7 +2330,7 @@ async function flushQueue() {
 function resetForm({ clearSelected = true } = {}) {
   eventEntryCard?.classList.add("hidden");
   if (clearSelected) {
-    scheduleSiglasGrid?.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
+    document.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
     pendingEventTokenNode = null;
   }
   form.reset();
