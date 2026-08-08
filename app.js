@@ -2244,7 +2244,7 @@ async function fetchBootstrapData() {
   }
 
   syncedRecords = Array.isArray(data.monthlyRecords) ? data.monthlyRecords : [];
-  monthlySummaryRecords = monthlySummaryRecords;
+  monthlySummaryRecords = Array.isArray(data.monthlySummary) ? data.monthlySummary : [];
   monthlySummaryRecords = monthlySummaryRecords.map((summary) => {
     const firstDate = String(summary.datas || "").split(",")[0].trim();
     const match = syncedRecords.find((record) => String(record.data || "") === firstDate && String(record.devedor || "") === String(summary.devedor || "") && String(record.credor || "") === String(summary.credor || ""));
@@ -2257,7 +2257,6 @@ async function fetchBootstrapData() {
   }
   renderAnnotation(null);
   monthlyNotesRecords = Array.isArray(data.monthlyNotes) ? data.monthlyNotes : [];
-  monthlySummaryRecords = Array.isArray(data.monthlySummary) ? data.monthlySummary : [];
   populateNotesMonthOptions(monthlyNotesRecords);
   renderNotesReminders();
   populateSummaryMonthOptions(monthlySummaryRecords);
