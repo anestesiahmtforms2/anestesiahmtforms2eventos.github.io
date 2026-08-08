@@ -2501,8 +2501,12 @@ editRecordForm?.addEventListener("submit", onEditRecordSubmit);
 syncButton.addEventListener("click", () => {
   flushQueue().catch(() => showToast("Nao foi possivel reenviar agora."));
 });
-backToAppButton?.addEventListener("click", () => {
-  scheduleSiglasGrid?.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
+backToAppButton?.addEventListener("click", (event) => {
+  event.preventDefault();
+  document.querySelectorAll(".sigla-token").forEach((node) => {
+    node.classList.remove("sigla-token--event-open");
+    node.removeAttribute("style");
+  });
   pendingEventTokenNode = null;
   resetForm({ clearSelected: true });
   window.scrollTo({ top: 0, behavior: "smooth" });
