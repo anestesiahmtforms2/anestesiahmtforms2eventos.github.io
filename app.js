@@ -1649,7 +1649,7 @@ function resolveMemberOption(sigla) {
     lh: "LH - Lúcia Helena Jacomett",
     la: "LA - Luiz Antônio Carneiro Silva",
   };
-  const key = normalizeToken(sigla);
+  const key = normalizeToken(sigla).toLowerCase();
   if (fixedDcNames[key]) return fixedDcNames[key];
   return currentAusenteOptions.find((option) => {
     const optionKey = normalizeToken(option);
@@ -1659,7 +1659,8 @@ function resolveMemberOption(sigla) {
 
 function getClickedMemberChoices(token, isVacation) {
   const rawParts = String(token || "").split(/[\\/|-]/).map((value) => value.trim()).filter(Boolean);
-  const hasDcGroup = normalizeToken(token).includes("dc") || rawParts.some((value) => normalizeToken(value) === "dc");
+  const normalizedParts = rawParts.map((value) => normalizeToken(value));
+  const hasDcGroup = normalizeToken(token) === "DC" || normalizedParts.includes("DC") || normalizedParts.some((value) => value.startsWith("DC "));
   const choices = hasDcGroup ? DC_OPTIONS.map((option) => option.split(" - ")[0]) : rawParts;
   return isVacation || choices.length > 1 ? choices : [choices[0] || token];
 }
