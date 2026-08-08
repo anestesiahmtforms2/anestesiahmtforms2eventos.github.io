@@ -85,6 +85,12 @@ const PRESENTE_OPTIONS = [
 ];
 
 const TURNO_OPTIONS = ["Manha", "Tarde", "Integral"];
+const DC_OPTIONS = [
+  "AD - Adelson José de Macedo",
+  "CR - Crélio Viana",
+  "LH - Lúcia Helena Jacomett",
+  "LA - Luiz Antônio Carneiro Silva",
+];
 const TEMPO_ATRASO_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"];
 const APP_PASSWORD = "8145";
 const AUTH_STORAGE_KEY = "eventos-escala-auth-state";
@@ -1598,7 +1604,7 @@ function renderScheduleByDate(dateKey) {
     tokenNode.className = tokenClass;
     tokenNode.addEventListener("click", () => {
       const visualToken = normalizeToken(tokenNode.textContent || token);
-      const selectedToken = visualToken.includes("DC") ? "DC" : token;
+      const selectedToken = normalizeToken(token).includes("DC") || visualToken.includes("DC") ? "DC" : token;
       openEventForSigla(selectedToken, day.date, isVacation);
     });
 
@@ -1654,7 +1660,7 @@ function resolveMemberOption(sigla) {
 function getClickedMemberChoices(token, isVacation) {
   const rawParts = String(token || "").split(/[\\/|-]/).map((value) => value.trim()).filter(Boolean);
   const hasDcGroup = normalizeToken(token).includes("dc") || rawParts.some((value) => normalizeToken(value) === "dc");
-  const choices = hasDcGroup ? ["AD", "CR", "LH", "LA"] : rawParts;
+  const choices = hasDcGroup ? DC_OPTIONS.map((option) => option.split(" - ")[0]) : rawParts;
   return isVacation || choices.length > 1 ? choices : [choices[0] || token];
 }
 
