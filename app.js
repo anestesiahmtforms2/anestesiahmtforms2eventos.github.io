@@ -1565,6 +1565,10 @@ function renderScheduleByDate(dateKey) {
   const isToday = dateKey === getLocalDateString();
 
   scheduleDateInput.value = dateKey;
+  if (registeredDateFilter) {
+    registeredDateFilter.value = dateKey;
+  }
+  renderRegisteredRecords(dateKey);
   scheduleSiglasGrid.innerHTML = "";
   todayBadge.classList.toggle("hidden", !isToday);
 
