@@ -1981,3 +1981,42 @@ button {
   .siglas-grid { gap: 5px; margin-top: 7px; }
   .sigla-token { min-height: 33px; border-radius: 11px; font-size: .76rem !important; }
 }
+
+/* Painel de lancamento mais compacto para celular. */
+.form-card {
+  padding: 14px;
+}
+.form-card .section-heading {
+  margin-bottom: 10px;
+}
+.form-card .field-grid {
+  gap: 9px;
+}
+.form-card .field {
+  padding: 8px 10px;
+  gap: 4px;
+}
+.form-card .field input,
+.form-card .field select,
+.form-card .field textarea {
+  min-height: 40px;
+}
+.form-card .actions {
+  margin-top: 10px;
+}
+@media (max-width: 430px) {
+  .form-card {
+    padding: 10px;
+    border-radius: 16px;
+  }
+  .form-card .field-grid {
+    gap: 7px;
+  }
+  .form-card .field {
+    padding: 7px 8px;
+  }
+  .form-card .field input,
+  .form-card .field select {
+    min-height: 37px;
+  }
+}
