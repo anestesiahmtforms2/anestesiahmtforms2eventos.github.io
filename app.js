@@ -664,10 +664,10 @@ function getSelectedSummaryRecords() {
   return monthlySummaryRecords
     .filter((record) => getSummaryMonthKey(record) === selectedMonth)
     .sort((left, right) => {
+      const byDate = firstSummaryDate(left.datas).localeCompare(firstSummaryDate(right.datas));
+      if (byDate !== 0) return byDate;
       const byDebtor = String(left.devedor || "").localeCompare(String(right.devedor || ""));
-      if (byDebtor !== 0) {
-        return byDebtor;
-      }
+      if (byDebtor !== 0) return byDebtor;
       return String(left.credor || "").localeCompare(String(right.credor || ""));
     });
 }
