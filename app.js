@@ -99,6 +99,7 @@ const AUTH_DURATION_MS = 90 * 24 * 60 * 60 * 1000;
 const QUEUE_KEY = "eventos-escala-queue";
 const HISTORY_KEY = "eventos-escala-history";
 const LATEST_SYNCED_KEY = "eventos-escala-latest-synced";
+const EVENTED_SIGLAS_KEY = "eventos-escala-evented-siglas";
 const TEAM_BOX = "CAIXA DA EQUIPE";
 const ATRASO_RATE = 200;
 const SCHEDULE_SPREADSHEET_ID = "11ayJbQFmFPzLegFZHL8kPKCvudpPo60O4NyR3i7aofA";
@@ -238,6 +239,7 @@ let scheduleHighlightsByDate = new Map();
 let scheduleVacationsByDate = new Map();
 let memoryAuthState = null;
 let pendingEventTokenNode = null;
+let pendingEventTokenKey = "";
 
 function normalizeText(value) {
   return String(value || "")
@@ -366,6 +368,17 @@ function readHistory() {
 
 function writeHistory(items) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, APP_CONFIG.historyLimit || 10)));
+}
+
+function readEventedSiglas() {
+  try { return JSON.parse(localStorage.getItem(EVENTED_SIGLAS_KEY) || "{}"); } catch { return {}; }
+}
+
+function rememberEventedSigla(dateKey, token) {
+  if (!dateKey || !token) return;
+  const values = readEventedSiglas();
+  values[dateKey + "|" + normalizeToken(token)] = true;
+  localStorage.setItem(EVENTED_SIGLAS_KEY, JSON.stringify(values));
 }
 
 function readLatestSyncedCache() {
@@ -1609,6 +1622,7 @@ function renderScheduleByDate(dateKey) {
     const tokenNode = document.createElement("button");
     tokenNode.type = "button";
     tokenNode.className = tokenClass;
+    if (readEventedSiglas()[day.date + "|" + normalizeToken(token)]) tokenNode.classList.add("sigla-token--event-open");
     tokenNode.addEventListener("click", () => {
       scheduleSiglasGrid.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
       tokenNode.classList.add("sigla-token--event-open");
@@ -1617,6 +1631,7 @@ function renderScheduleByDate(dateKey) {
       tokenNode.style.borderColor = "#991b1b";
       tokenNode.style.boxShadow = "0 0 0 3px rgba(254, 226, 226, .95), 0 0 0 6px rgba(239, 68, 68, .22), 0 10px 20px rgba(153, 27, 27, .28)";
       pendingEventTokenNode = tokenNode;
+      pendingEventTokenKey = day.date + "|" + normalizeToken(token);
       const visualToken = normalizeToken(tokenNode.textContent || token);
       const selectedToken = normalizeToken(token).includes("DC") || visualToken.includes("DC") ? "DC" : token;
       openEventForSigla(selectedToken, day.date, isVacation);
@@ -2375,7 +2390,13 @@ async function onSubmit(event) {
   }
 
   const payload = buildPayload();
-  const markEventAsLaunched = () => pendingEventTokenNode?.classList.add("sigla-token--event-open");
+  const markEventAsLaunched = () => {
+    pendingEventTokenNode?.classList.add("sigla-token--event-open");
+    if (pendingEventTokenKey) {
+      const parts = pendingEventTokenKey.split("|");
+      rememberEventedSigla(parts[0], parts.slice(1).join("|"));
+    }
+  };
   submitButton.disabled = true;
 
   try {
@@ -2508,6 +2529,7 @@ backToAppButton?.addEventListener("click", (event) => {
     node.removeAttribute("style");
   });
   pendingEventTokenNode = null;
+  pendingEventTokenKey = "";
   resetForm({ clearSelected: true });
   window.scrollTo({ top: 0, behavior: "smooth" });
   showToast("Você voltou para a tela inicial. O registro incompleto não foi enviado.");
