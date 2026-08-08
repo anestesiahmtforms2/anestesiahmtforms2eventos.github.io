@@ -1760,3 +1760,114 @@ button {
     padding: 4px 6px !important;
   }
 }
+
+
+/* Area premium de siglas: toque amplo, contraste e leitura clara. */
+.schedule-card {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255,255,255,.96), transparent 38%),
+    linear-gradient(145deg, #f8fbfc 0%, #eef5f4 52%, #e9f0f3 100%);
+  border: 1px solid rgba(15, 118, 110, .18);
+  box-shadow: 0 18px 42px rgba(15, 46, 62, .12);
+}
+
+.schedule-top {
+  padding: 2px 2px 8px;
+}
+
+.schedule-top .date-title {
+  color: #0b3447;
+  font-weight: 900;
+  letter-spacing: .01em;
+}
+
+.siglas-grid {
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding: 4px;
+}
+
+.sigla-item {
+  min-width: 0;
+  gap: 6px;
+}
+
+.sigla-token {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 6px;
+  border: 1px solid rgba(11, 52, 71, .20);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #ffffff 0%, #edf5f7 100%);
+  color: #0b3447;
+  font-size: clamp(1.15rem, 4.3vw, 1.55rem) !important;
+  font-weight: 950;
+  letter-spacing: .02em;
+  box-shadow:
+    0 7px 0 rgba(11, 52, 71, .08),
+    0 12px 24px rgba(11, 52, 71, .11),
+    inset 0 1px 0 rgba(255,255,255,.95);
+  transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sigla-button {
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.sigla-button:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.08);
+  box-shadow:
+    0 9px 0 rgba(11, 52, 71, .08),
+    0 16px 28px rgba(11, 52, 71, .15),
+    inset 0 1px 0 rgba(255,255,255,.98);
+}
+
+.sigla-button:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 3px 0 rgba(11, 52, 71, .10),
+    0 7px 14px rgba(11, 52, 71, .12),
+    inset 0 2px 5px rgba(11, 52, 71, .08);
+}
+
+.sigla-button:focus-visible {
+  outline: 4px solid rgba(20, 184, 166, .34);
+  outline-offset: 3px;
+}
+
+.sigla-index {
+  min-width: 22px;
+  min-height: 18px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(11, 52, 71, .09);
+  color: #315365;
+  font-size: .66rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+@media (max-width: 430px) {
+  .siglas-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+    padding: 2px;
+  }
+
+  .sigla-token {
+    min-height: 58px;
+    border-radius: 16px;
+    font-size: 1.12rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sigla-token {
+    transition: none;
+  }
+}
