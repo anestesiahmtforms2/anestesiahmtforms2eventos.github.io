@@ -1597,7 +1597,10 @@ function renderScheduleByDate(dateKey) {
     tokenNode.type = "button";
     tokenNode.className = tokenClass;
     tokenNode.addEventListener("click", () => {
-      const visualToken = normalizeToken(tokenNode.textContent || token);\n      const selectedToken = visualToken.includes("DC") ? "DC" : token;\n      openEventForSigla(selectedToken, day.date, isVacation);\n    });
+      const visualToken = normalizeToken(tokenNode.textContent || token);
+      const selectedToken = visualToken.includes("DC") ? "DC" : token;
+      openEventForSigla(selectedToken, day.date, isVacation);
+    });
 
     if (isVacation) {
       appendVacationTokenDisplay(tokenNode, token, vacationOrder, showVacationPositions);
