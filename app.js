@@ -1612,6 +1612,10 @@ function renderScheduleByDate(dateKey) {
     tokenNode.addEventListener("click", () => {
       scheduleSiglasGrid.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
       tokenNode.classList.add("sigla-token--event-open");
+      tokenNode.style.background = "linear-gradient(145deg, #ef4444 0%, #b91c1c 100%)";
+      tokenNode.style.color = "#ffffff";
+      tokenNode.style.borderColor = "#991b1b";
+      tokenNode.style.boxShadow = "0 0 0 3px rgba(254, 226, 226, .95), 0 0 0 6px rgba(239, 68, 68, .22), 0 10px 20px rgba(153, 27, 27, .28)";
       pendingEventTokenNode = tokenNode;
       const visualToken = normalizeToken(tokenNode.textContent || token);
       const selectedToken = normalizeToken(token).includes("DC") || visualToken.includes("DC") ? "DC" : token;
