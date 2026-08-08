@@ -2020,3 +2020,29 @@ button {
     min-height: 37px;
   }
 }
+
+/* Ajuste fino de proporcao entre formulario e siglas. */
+.form-card .field-grid {
+  gap: 8px;
+}
+.form-card .field {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.form-card .actions {
+  margin-top: 8px;
+}
+.siglas-grid {
+  grid-template-columns: repeat(auto-fit, minmax(61px, 1fr));
+  gap: 6px;
+}
+.sigla-token {
+  min-height: 37px;
+  font-size: clamp(.82rem, 2.95vw, 1.03rem) !important;
+}
+@media (max-width: 430px) {
+  .form-card .field-grid { gap: 6px; }
+  .form-card .field { padding-top: 6px; padding-bottom: 6px; }
+  .siglas-grid { gap: 5px; }
+  .sigla-token { min-height: 35px; font-size: .8rem !important; }
+}
