@@ -647,7 +647,7 @@ function renderMonthlySummary() {
       <div class="monthly-record-grid">
         <span><b>Devedor:</b> ${record.devedor || "-"}</span>
         <span><b>Credor:</b> ${record.credor || "-"}</span>
-        <span><b>Data(s) do(s) evento(s):</b> ${displayDateList(record.datas)}</span>
+        <span><b>Data(s) do(s) evento(s):</b> ${displayDateList(record.datas)}</span><span><b>Tipo de Evento:</b> ${record.evento || "-"}</span>
         <span><b>Total devido:</b> ${record.total || "-"}</span>
       </div>
     `;
@@ -742,10 +742,11 @@ function createStyledSummaryPdfBlob(monthKey, records) {
   const usableWidth = pageWidth - marginX * 2;
   const tableTopGap = 18;
   const columns = [
-    { label: "DATA(S) DO EVENTO", key: "datas", width: 128, maxLength: 22 },
-    { label: "DEVEDOR", key: "devedor", width: 142, maxLength: 22 },
-    { label: "CREDOR", key: "credor", width: 142, maxLength: 22 },
-    { label: "TOTAL DEVIDO", key: "total", width: usableWidth - 128 - 142 - 142, maxLength: 13 },
+    { label: "DATA(S) DO EVENTO", key: "datas", width: 104, maxLength: 18 },
+    { label: "TIPO DE EVENTO", key: "evento", width: 98, maxLength: 15 },
+    { label: "DEVEDOR", key: "devedor", width: 122, maxLength: 19 },
+    { label: "CREDOR", key: "credor", width: 122, maxLength: 19 },
+    { label: "TOTAL DEVIDO", key: "total", width: usableWidth - 104 - 98 - 122 - 122, maxLength: 13 },
   ];
 
   function addRect(commands, x, y, width, height, fillColor, strokeColor, lineWidth = 1) {
@@ -2243,6 +2244,12 @@ async function fetchBootstrapData() {
   }
 
   syncedRecords = Array.isArray(data.monthlyRecords) ? data.monthlyRecords : [];
+  monthlySummaryRecords = monthlySummaryRecords;
+  monthlySummaryRecords = monthlySummaryRecords.map((summary) => {
+    const firstDate = String(summary.datas || "").split(",")[0].trim();
+    const match = syncedRecords.find((record) => String(record.data || "") === firstDate && String(record.devedor || "") === String(summary.devedor || "") && String(record.credor || "") === String(summary.credor || ""));
+    return { ...summary, evento: summary.evento || match?.evento || "" };
+  });
   renderLatestSynced(data.latestRecord || readLatestSyncedCache());
   if (registeredDateFilter) {
     registeredDateFilter.value = registeredDateFilter.value || getLocalDateString();
