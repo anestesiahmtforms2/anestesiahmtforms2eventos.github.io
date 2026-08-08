@@ -1614,7 +1614,14 @@ function repairVisibleText_() {
 }
 
 function resolveMemberOption(sigla) {
+  const fixedDcNames = {
+    ad: "AD - Adelson José de Macedo",
+    cr: "CR - Crélio Viana",
+    lh: "LH - Lúcia Helena Jacomett",
+    la: "LA - Luiz Antônio Carneiro Silva",
+  };
   const key = normalizeToken(sigla);
+  if (fixedDcNames[key]) return fixedDcNames[key];
   return currentAusenteOptions.find((option) => {
     const optionKey = normalizeToken(option);
     return optionKey === key || optionKey.startsWith(key + " -") || optionKey.startsWith(key + " ");
@@ -1623,7 +1630,7 @@ function resolveMemberOption(sigla) {
 
 function getClickedMemberChoices(token, isVacation) {
   const rawParts = String(token || "").split(/[\\/|-]/).map((value) => value.trim()).filter(Boolean);
-  const hasDcGroup = normalizeToken(token).includes("dc") || rawParts.some((value) => normalizeToken(value) === "dc");
+  const hasDcGroup = normalizeToken(token).trim() === "dc" || normalizeToken(token).includes("dc/") || rawParts.some((value) => normalizeToken(value) === "dc");
   const choices = hasDcGroup ? ["AD", "CR", "LH", "LA"] : rawParts;
   return isVacation || choices.length > 1 ? choices : [choices[0] || token];
 }
