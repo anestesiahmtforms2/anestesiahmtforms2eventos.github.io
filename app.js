@@ -2497,7 +2497,9 @@ syncButton.addEventListener("click", () => {
   flushQueue().catch(() => showToast("Nao foi possivel reenviar agora."));
 });
 backToAppButton?.addEventListener("click", () => {
-  resetForm();
+  scheduleSiglasGrid?.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
+  pendingEventTokenNode = null;
+  resetForm({ clearSelected: true });
   window.scrollTo({ top: 0, behavior: "smooth" });
   showToast("Você voltou para a tela inicial. O registro incompleto não foi enviado.");
 });
