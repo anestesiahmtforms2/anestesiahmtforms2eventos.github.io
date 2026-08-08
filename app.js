@@ -587,6 +587,23 @@ function populateSummaryMonthOptions(records) {
   summaryMonthSelect.value = months.includes(currentMonthKey) ? currentMonthKey : months[0];
 }
 
+function displayDateList(value) {
+  return String(value || "-").split(",").map((item) => {
+    const text = item.trim();
+    let match = text.match(/^(\\d{4})[-/,](\\d{2})[-/,](\\d{2})$/);
+    if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+    match = text.match(/^(\\d{4})[,.](\\d{2})[,.](\\d{2})$/);
+    if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+    return text;
+  }).join(", ");
+}
+
+function firstSummaryDate(value) {
+  const text = String(value || "").split(",")[0].trim();
+  const match = text.match(/^(\\d{4})[-/,](\\d{2})[-/,](\\d{2})$/);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : text;
+}
+
 function renderMonthlySummary() {
   if (!monthlySummaryList || !summaryMonthInfo || !summaryMonthSelect) {
     return;
@@ -603,10 +620,10 @@ function renderMonthlySummary() {
   const records = monthlySummaryRecords
     .filter((record) => getSummaryMonthKey(record) === selectedMonth)
     .sort((left, right) => {
+      const byDate = firstSummaryDate(left.datas).localeCompare(firstSummaryDate(right.datas));
+      if (byDate !== 0) return byDate;
       const byDebtor = String(left.devedor || "").localeCompare(String(right.devedor || ""));
-      if (byDebtor !== 0) {
-        return byDebtor;
-      }
+      if (byDebtor !== 0) return byDebtor;
       return String(left.credor || "").localeCompare(String(right.credor || ""));
     });
 
@@ -630,7 +647,7 @@ function renderMonthlySummary() {
       <div class="monthly-record-grid">
         <span><b>Devedor:</b> ${record.devedor || "-"}</span>
         <span><b>Credor:</b> ${record.credor || "-"}</span>
-        <span><b>Data(s) do(s) evento(s):</b> ${record.datas || "-"}</span>
+        <span><b>Data(s) do(s) evento(s):</b> ${displayDateList(record.datas)}</span>
         <span><b>Total devido:</b> ${record.total || "-"}</span>
       </div>
     `;
