@@ -91,6 +91,7 @@ const DC_OPTIONS = [
   "LH - Lúcia Helena Jacomett",
   "LA - Luiz Antônio Carneiro Silva",
 ];
+const AUSENTE_SIGLAS = ["AD","AA","AL","BA","CH","CR","DE","DN","FL","FR","GU","GB","IG","JA","LE","L2","LD","LC","LH","LU","LA","LO","MA","MH","PR","RA","RL","RC","RO","RU","WE"];
 const TEMPO_ATRASO_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"];
 const APP_PASSWORD = "8145";
 const AUTH_STORAGE_KEY = "eventos-escala-auth-state";
@@ -1652,10 +1653,13 @@ function resolveMemberOption(sigla) {
   const normalizedKey = normalizeToken(sigla);
   const fixedKey = normalizedKey.toLowerCase();
   if (fixedDcNames[fixedKey]) return fixedDcNames[fixedKey];
-  return currentAusenteOptions.find((option) => {
+  const remoteMatch = currentAusenteOptions.find((option) => {
     const optionKey = normalizeToken(option);
     return optionKey === normalizedKey || optionKey.startsWith(normalizedKey + " -") || optionKey.startsWith(normalizedKey + " ");
-  }) || sigla;
+  });
+  if (remoteMatch) return remoteMatch;
+  const index = AUSENTE_SIGLAS.indexOf(normalizedKey);
+  return index >= 0 && AUSENTE_OPTIONS[index] ? `${AUSENTE_SIGLAS[index]} - ${AUSENTE_OPTIONS[index]}` : sigla;
 }
 
 function getClickedMemberChoices(token, isVacation) {
