@@ -1617,11 +1617,11 @@ function renderScheduleByDate(dateKey) {
 
 function repairVisibleText_() {
   const replacements = {
-    "Ã§": "ç", "Ã£": "ã", "Ã¡": "á", "Ã©": "é", "Ãª": "ê",
-    "Ã­": "í", "Ã³": "ó", "Ã´": "ô", "Ãµ": "õ", "Ãº": "ú",
-    "Ã§Ã£": "ção", "Ãšltimo": "Último", "LanÃ§amento": "Lançamento",
-    "DescriÃ§Ã£o": "Descrição", "MÃºltiplo": "Múltiplo",
-    "anotaÃ§Ãµes": "anotações", "registros sincronizado": "registros sincronizados"
+    "ç": "ç", "ã": "ã", "á": "á", "é": "é", "ê": "ê",
+    "í": "í", "ó": "ó", "ô": "ô", "õ": "õ", "ú": "ú",
+    "çã": "ção", "Último": "Último", "Lançamento": "Lançamento",
+    "Descrição": "Descrição", "Múltiplo": "Múltiplo",
+    "anotações": "anotações", "registros sincronizado": "registros sincronizados"
   };
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const nodes = [];
