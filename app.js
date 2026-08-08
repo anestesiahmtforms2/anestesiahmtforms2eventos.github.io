@@ -1649,11 +1649,12 @@ function resolveMemberOption(sigla) {
     lh: "LH - Lúcia Helena Jacomett",
     la: "LA - Luiz Antônio Carneiro Silva",
   };
-  const key = normalizeToken(sigla).toLowerCase();
-  if (fixedDcNames[key]) return fixedDcNames[key];
+  const normalizedKey = normalizeToken(sigla);
+  const fixedKey = normalizedKey.toLowerCase();
+  if (fixedDcNames[fixedKey]) return fixedDcNames[fixedKey];
   return currentAusenteOptions.find((option) => {
     const optionKey = normalizeToken(option);
-    return optionKey === key || optionKey.startsWith(key + " -") || optionKey.startsWith(key + " ");
+    return optionKey === normalizedKey || optionKey.startsWith(normalizedKey + " -") || optionKey.startsWith(normalizedKey + " ");
   }) || sigla;
 }
 
