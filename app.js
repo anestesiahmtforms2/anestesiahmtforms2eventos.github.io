@@ -2327,10 +2327,12 @@ async function flushQueue() {
   showToast(remaining.length ? "Parte da fila ainda ficou pendente." : "Fila reenviada com sucesso.");
 }
 
-function resetForm() {
+function resetForm({ clearSelected = true } = {}) {
   eventEntryCard?.classList.add("hidden");
-  scheduleSiglasGrid?.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
-  pendingEventTokenNode = null;
+  if (clearSelected) {
+    scheduleSiglasGrid?.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
+    pendingEventTokenNode = null;
+  }
   form.reset();
   setDefaultDate();
   fillSelect(eventoSelect, currentEventoOptions, "Selecione");
@@ -2375,8 +2377,8 @@ async function onSubmit(event) {
     if (!navigator.onLine || !APP_CONFIG.endpointUrl) {
       addToQueue(payload);
       prependHistory(payload);
+      resetForm({ clearSelected: false });
       markEventAsLaunched();
-      resetForm();
       updateConnectionState();
       showToast("Registro salvo localmente para envio posterior.");
       return;
@@ -2384,8 +2386,8 @@ async function onSubmit(event) {
 
     await postPayload(payload);
     prependHistory(payload);
+    resetForm({ clearSelected: false });
     markEventAsLaunched();
-    resetForm();
     await fetchBootstrapData().catch(() => {
       renderLatestSynced();
     });
