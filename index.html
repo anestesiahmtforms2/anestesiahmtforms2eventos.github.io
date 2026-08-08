@@ -24,10 +24,10 @@
     <main class="app-shell">
       <section class="auth-card" id="authCard">
         <div class="hero-badge">Acesso protegido</div>
-        <img class="hero-logo auth-logo" src="assets/hero-icon.png" alt="GestÃ£o Operacional" />
+        <img class="hero-logo auth-logo" src="assets/hero-icon.png" alt="Gestão Operacional" />
         <h1>Eventos de Escala</h1>
         <p class="auth-copy">
-          Digite a senha de 4 dÃ­gitos para abrir o aplicativo. ApÃ³s o login, este dispositivo fica
+          Digite a senha de 4 dígitos para abrir o aplicativo. Após o login, este dispositivo fica
           liberado por 90 dias.
         </p>
         <form id="authForm" class="auth-form" novalidate>
@@ -51,10 +51,10 @@
       <div id="appContent" class="hidden">
         <section class="hero-card">
           <div class="hero-badge">Painel operacional</div>
-          <img class="hero-logo" src="assets/hero-icon.png" alt="GestÃ£o Operacional" />
+          <img class="hero-logo" src="assets/hero-icon.png" alt="Gestão Operacional" />
           <h1>Eventos de Escala</h1>
           <p class="hero-copy">
-            Registro rÃ¡pido, consulta de escala por data, ediÃ§Ã£o do Ãºltimo registro sincronizado e
+            Registro rápido, consulta de escala por data, edição do último registro sincronizado e
             resumo mensal em um fluxo mais claro e profissional.
           </p>
         </section>
@@ -69,7 +69,7 @@
             </div>
 
             <div id="outOfRangeNotice" class="notice hidden">
-              A data escolhida nÃ£o estÃ¡ disponÃ­vel na escala carregada.
+              A data escolhida não está disponível na escala carregada.
             </div>
 
             <div class="controls-grid">
@@ -81,7 +81,7 @@
               <div class="quick-actions">
                 <button id="prevScheduleButton" class="soft-button" type="button">Anterior</button>
                 <button id="todayScheduleButton" class="primary-button" type="button">Hoje</button>
-                <button id="nextScheduleButton" class="soft-button" type="button">PrÃ³ximo</button>
+                <button id="nextScheduleButton" class="soft-button" type="button">Próximo</button>
               </div>
             </div>
           </section>
@@ -110,7 +110,7 @@
           <div>
             <p class="queue-title">Instalar no smartphone</p>
             <p class="queue-copy" id="installHelpText">
-              Adicione este app Ã  tela inicial para usar como aplicativo no celular.
+              Adicione este app à tela inicial para usar como aplicativo no celular.
             </p>
           </div>
           <button type="button" id="installButton" class="secondary-button">
@@ -120,8 +120,8 @@
 
         <section class="form-card hidden" id="eventEntryCard">
           <div class="section-heading">
-            <p class="queue-title">LanÃ§amento do evento</p>
-            <p class="queue-copy">Preencha os campos em sequÃªncia para evitar omissÃµes no registro.</p>
+            <p class="queue-title">Lançamento do evento</p>
+            <p class="queue-copy">Preencha os campos em sequência para evitar omissões no registro.</p>
           </div>
 
           <form id="eventForm" novalidate>
@@ -137,7 +137,7 @@
               </label>
 
               <label class="field field-accent-a hidden" id="eventoOutroField">
-                <span>DescriÃ§Ã£o do evento</span>
+                <span>Descrição do evento</span>
                 <input
                   id="eventoOutro"
                   name="eventoOutro"
@@ -148,7 +148,7 @@
               </label>
 
               <label class="field field-accent-b hidden" id="atrasoTempoField">
-                <span>MÃºltiplo do atraso</span>
+                <span>Múltiplo do atraso</span>
                 <select id="atrasoTempo" name="atrasoTempo"></select>
               </label>
 
@@ -180,7 +180,7 @@
 
             <div class="actions">
               <button type="submit" id="submitButton">
-                <span class="submit-alert">ATENÃ‡ÃƒO</span>
+                <span class="submit-alert">ATENÇÃO</span>
                 <span class="submit-main">Registrar evento</span>
                 <span class="submit-sub">Confira os dados antes do envio!</span>
               </button>
@@ -207,9 +207,9 @@
         <section class="history-card">
           <div class="history-head">
             <div>
-              <p class="queue-title">Ãšltimo registro sincronizado</p>
+              <p class="queue-title">Último registro sincronizado</p>
               <p class="queue-copy">
-                Toque duas vezes no cartÃ£o para editar o registro mais recente encontrado na planilha.
+                Toque duas vezes no cartão para editar o registro mais recente encontrado na planilha.
               </p>
             </div>
           </div>
@@ -219,22 +219,22 @@
 
         <div class="notes-action hidden">
           <button type="button" id="annotationsButton" class="secondary-button report-button">
-            Abrir anotaÃ§Ãµes do dia
+            Abrir anotações do dia
           </button>
         </div>
 
         <div class="notes-action">
           <button type="button" id="notesRemindersButton" class="secondary-button report-button">
-            Lembretes das anotaÃ§Ãµes
+            Lembretes das anotações
           </button>
         </div>
 
         <section class="monthly-card hidden" id="annotationsSection">
           <div class="history-head">
             <div>
-              <p class="queue-title">AnotaÃ§Ãµes do Dia</p>
+              <p class="queue-title">Anotações do Dia</p>
               <p class="queue-copy">
-                A Ã¡rea sempre abre pronta para uma nova anotaÃ§Ã£o e envia o conteÃºdo para a aba
+                A área sempre abre pronta para uma nova anotação e envia o conteúdo para a aba
                 `ANOTACOES`.
               </p>
             </div>
@@ -248,19 +248,19 @@
                 name="annotationText"
                 rows="7"
                 maxlength="4000"
-                placeholder="Digite aqui as anotaÃ§Ãµes do dia"
+                placeholder="Digite aqui as anotações do dia"
                 required
               ></textarea>
             </label>
 
             <div class="actions">
-              <button type="submit" id="saveAnnotationButton">Salvar anotaÃ§Ãµes</button>
+              <button type="submit" id="saveAnnotationButton">Salvar anotações</button>
             </div>
           </form>
 
           <div class="section-close-action">
             <button type="button" id="closeAnnotationsButton" class="secondary-button report-button">
-              Ocultar anotaÃ§Ãµes do dia
+              Ocultar anotações do dia
             </button>
           </div>
         </section>
@@ -268,31 +268,31 @@
         <section class="monthly-card hidden" id="notesRemindersSection">
           <div class="history-head">
             <div>
-              <p class="queue-title">Lembretes das AnotaÃ§Ãµes</p>
+              <p class="queue-title">Lembretes das Anotações</p>
               <p class="queue-copy">
-                Escolha o mÃªs e, se quiser, um dia especÃ­fico para revisar rapidamente as anotaÃ§Ãµes salvas.
+                Escolha o mês e, se quiser, um dia específico para revisar rapidamente as anotações salvas.
               </p>
             </div>
           </div>
 
           <div class="monthly-toolbar">
             <label class="field field-accent-b monthly-field">
-              <span>MÃªs das anotaÃ§Ãµes</span>
+              <span>Mês das anotações</span>
               <select id="notesMonthSelect" name="notesMonthSelect"></select>
             </label>
 
             <label class="field field-accent-a monthly-field">
-              <span>Dia da anotaÃ§Ã£o</span>
+              <span>Dia da anotação</span>
               <input id="notesDateFilter" name="notesDateFilter" type="date" />
             </label>
           </div>
 
-          <div class="monthly-summary" id="notesMonthInfo">Nenhum mÃªs disponÃ­vel.</div>
+          <div class="monthly-summary" id="notesMonthInfo">Nenhum mês disponível.</div>
           <div id="notesRemindersList" class="monthly-records-list"></div>
 
           <div class="section-close-action">
             <button type="button" id="closeNotesRemindersButton" class="secondary-button report-button">
-              Ocultar lembretes das anotaÃ§Ãµes
+              Ocultar lembretes das anotações
             </button>
           </div>
         </section>
@@ -308,19 +308,19 @@
             <div>
               <p class="queue-title">Resumo Mensal</p>
               <p class="queue-copy">
-                Visualize as relaÃ§Ãµes de pagamento do mÃªs escolhido e gere um PDF para compartilhamento no WhatsApp.
+                Visualize as relações de pagamento do mês escolhido e gere um PDF para compartilhamento no WhatsApp.
               </p>
             </div>
           </div>
 
           <div class="monthly-toolbar">
             <label class="field field-accent-a monthly-field">
-              <span>MÃªs de referÃªncia</span>
+              <span>Mês de referência</span>
               <select id="summaryMonthSelect" name="summaryMonthSelect"></select>
             </label>
           </div>
 
-          <div class="monthly-summary" id="summaryMonthInfo">Nenhum mÃªs disponÃ­vel.</div>
+          <div class="monthly-summary" id="summaryMonthInfo">Nenhum mês disponível.</div>
           <div id="monthlySummaryList" class="monthly-records-list"></div>
 
           <div class="section-close-action">
@@ -338,7 +338,7 @@
         <div class="edit-modal__header">
           <div>
             <p class="queue-title">Editar registro</p>
-            <h2 id="editRecordTitle">Ãšltimo registro sincronizado</h2>
+            <h2 id="editRecordTitle">Último registro sincronizado</h2>
           </div>
           <button type="button" id="closeEditRecordButton" class="secondary-button edit-modal__close">
             Fechar
@@ -360,12 +360,12 @@
             </label>
 
             <label class="field field-accent-a">
-              <span>DescriÃ§Ã£o do evento</span>
+              <span>Descrição do evento</span>
               <input id="editEventoDescricao" type="text" maxlength="120" />
             </label>
 
             <label class="field field-accent-b">
-              <span>MÃºltiplo do atraso</span>
+              <span>Múltiplo do atraso</span>
               <select id="editAtrasoTempo"></select>
             </label>
 
@@ -401,7 +401,7 @@
           </label>
 
           <div class="actions">
-            <button type="submit" id="saveEditRecordButton">Salvar alteraÃ§Ãµes</button>
+            <button type="submit" id="saveEditRecordButton">Salvar alterações</button>
           </div>
         </form>
       </div>
@@ -414,10 +414,10 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script src="storage-shim.js?v=22"></script>
-    <script src="auth-fallback.js?v=22"></script>
+    <script src="storage-shim.js?v=37"></script>
+    <script src="auth-fallback.js?v=37"></script>
     <script src="config.js"></script>
-    <script src="app.js?v=22" type="module"></script>
+    <script src="app.js?v=37" type="module"></script>
   </body>
 </html>
 
