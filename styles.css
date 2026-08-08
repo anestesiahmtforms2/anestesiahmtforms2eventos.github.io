@@ -1717,3 +1717,46 @@ button {
   display: inline;
   margin: 0;
 }
+
+
+/* Ajuste final da faixa de busca e das siglas. */
+.search-banner {
+  padding: 5px 8px !important;
+  margin-bottom: 5px !important;
+}
+.search-banner .card-header {
+  gap: 3px;
+}
+.search-banner .card-title {
+  font-size: 0.72rem !important;
+}
+.search-banner .controls-grid {
+  gap: 4px !important;
+  margin-top: 4px !important;
+}
+.search-banner .date-field {
+  gap: 2px !important;
+  font-size: 0.56rem !important;
+}
+.search-banner .date-field input {
+  min-height: 29px !important;
+  padding: 4px 7px !important;
+  font-size: 0.76rem !important;
+}
+.search-banner .soft-button,
+.search-banner .primary-button {
+  min-height: 28px !important;
+  padding: 4px !important;
+  font-size: 0.56rem !important;
+}
+.sigla-token {
+  font-size: 1.04rem !important;
+}
+@media (max-width: 430px) {
+  .sigla-token {
+    font-size: 0.95rem !important;
+  }
+  .search-banner {
+    padding: 4px 6px !important;
+  }
+}
