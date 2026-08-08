@@ -1611,6 +1611,7 @@ function renderScheduleByDate(dateKey) {
     tokenNode.className = tokenClass;
     tokenNode.addEventListener("click", () => {
       scheduleSiglasGrid.querySelectorAll(".sigla-token--event-open").forEach((node) => node.classList.remove("sigla-token--event-open"));
+      tokenNode.classList.add("sigla-token--event-open");
       pendingEventTokenNode = tokenNode;
       const visualToken = normalizeToken(tokenNode.textContent || token);
       const selectedToken = normalizeToken(token).includes("DC") || visualToken.includes("DC") ? "DC" : token;
