@@ -174,6 +174,7 @@ const queueCount = document.getElementById("queueCount");
 const latestSyncedCard = document.getElementById("latestSyncedCard");
 const registeredDateFilter = document.getElementById("registeredDateFilter");
 const eventEntryCard = document.getElementById("eventEntryCard");
+const backToAppButton = document.getElementById("backToAppButton");
 const annotationsButton = document.getElementById("annotationsButton");
 const annotationsSection = document.getElementById("annotationsSection");
 const annotationsForm = document.getElementById("annotationsForm");
@@ -2483,6 +2484,11 @@ annotationsForm?.addEventListener("submit", onAnnotationSubmit);
 editRecordForm?.addEventListener("submit", onEditRecordSubmit);
 syncButton.addEventListener("click", () => {
   flushQueue().catch(() => showToast("Nao foi possivel reenviar agora."));
+});
+backToAppButton?.addEventListener("click", () => {
+  resetForm();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  showToast("Você voltou para a tela inicial. O registro incompleto não foi enviado.");
 });
 annotationsButton?.addEventListener("click", openAnnotationsSheet);
 notesRemindersButton?.addEventListener("click", toggleNotesRemindersSection);
